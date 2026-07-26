@@ -196,34 +196,16 @@ textarea.inp{min-height:70px;resize:vertical}
 <nav class="tabbar"><div class="inner" id="tabbar"></div></nav>
 
 <script>
-/* ================= MOTEUR PIXIES (vérifié = 40 pts sur l'exemple du livret) ================= */
-(function (global) {
-  const COLORS=['blue','green','yellow','orange','red','purple','brown'];
-  function mult(m){return m+1;}
-  function isColor(cell,c){if(!cell||cell.state!=='up')return false;return cell.color===c||cell.color==='multi';}
-  function largestZone(cells){
-    let best=0,bestColor=null;
-    for(const c of COLORS){const seen=new Array(9).fill(false);
-      for(let i=0;i<9;i++){if(seen[i]||!isColor(cells[i],c))continue;
-        let size=0;const stack=[i];seen[i]=true;
-        while(stack.length){const x=stack.pop();size++;const r=Math.floor(x/3),col=x%3;const nb=[];
-          if(r>0)nb.push(x-3);if(r<2)nb.push(x+3);if(col>0)nb.push(x-1);if(col<2)nb.push(x+1);
-          for(const n of nb)if(!seen[n]&&isColor(cells[n],c)){seen[n]=true;stack.push(n);}}
-        if(size>best){best=size;bestColor=c;}}}
-    return{size:best>=2?best:0,color:best>=2?bestColor:null};
-  }
-  function scoreManche(cells,manche){
-    let validated=0,spirals=0,crosses=0,special=0;
-    for(const cell of cells){if(!cell||cell.state!=='up')continue;
-      if(cell.validated&&cell.number)validated+=cell.number;
-      spirals+=(cell.spirals||0);crosses+=(cell.crosses||0);}
-    for(const cell of cells){if(!cell||cell.state!=='up'||!cell.special)continue;
-      let cnt=0;for(const c2 of cells)if(isColor(c2,cell.special))cnt++;special+=cnt;}
-    const symbols=spirals+special-crosses;const z=largestZone(cells);const zonePts=z.size*mult(manche);
-    return{validated,spiralsBase:spirals,crosses,special,symbols,zoneCards:z.size,zoneColor:z.color,zonePts,total:validated+symbols+zonePts};
-  }
-  global.PixiesScore={scoreManche,largestZone,COLORS,mult};
-})(window);
+/* ================= DÉCOMPTE PIXIES (simplifié, par manche) ================= */
+/* Total = cartes validées (somme des chiffres cochés) + points bonus (spirales des
+   cartes spéciales, etc.) + spirales − croix + (taille de zone × multiplicateur).
+   Multiplicateur : manche 1 → ×2, manche 2 → ×3, manche 3 → ×4 */
+function pixiesMult(manche){return manche+1;}
+function validatedSum(c){let s=0;const v=c.valid||[];for(let i=0;i<9;i++)if(v[i])s+=(i+1);return s;}
+function pixiesTotal(c,manche){
+  const bonus=+c.bonus||0, sp=+c.spirals||0, cr=+c.crosses||0, zone=+c.zone||0;
+  return validatedSum(c)+bonus+sp-cr+zone*pixiesMult(manche);
+}
 
 /* ================= CONSTANTES ================= */
 const COLOR_HEX={blue:'#3b82f6',green:'#22c55e',yellow:'#eab308',orange:'#f97316',red:'#ef4444',purple:'#a855f7',brown:'#a16207'};
@@ -236,7 +218,7 @@ const STORE='comptoirScore_v1';
 let db={parties:[],games:[],settings:{proxy:''}};
 try{const raw=localStorage.getItem(STORE);if(raw)db=JSON.parse(raw);}catch(e){}
 db.parties=db.parties||[];db.games=db.games||[];db.settings=db.settings||{};
-db.settings.proxy=db.settings.proxy||'';db.settings.aiProxy=db.settings.aiProxy||'';
+db.settings.proxy=db.settings.proxy||'';
 // migration douce : anciennes parties Pixies
 db.parties.forEach(p=>{if(!p.type)p.type=(p.game==='Pixies')?'pixies':'manual';
   if(!p.rounds)p.rounds=(p.type==='pixies')?3:(p.scores[0]?p.scores[0].length:1);
@@ -294,7 +276,7 @@ function renderParties(){
           <div class="badge">${done?'🏆 '+esc(lead.n):lead.t+' pts'}</div><div class="chev">›</div></div>`;
       }).join(''):`<div class="empty">Aucune partie.<br>Lance une nouvelle partie pour compter les points.</div>`}
     </div>
-    <div class="footer">Pixies : décompte automatique complet.<br>Autres jeux : saisie manuelle des scores par manche.</div>`;
+    <div class="footer">Pixies : décompte par manche (validées, bonus, spirales, croix, zone).<br>Autres jeux : saisie manuelle des scores par tour.</div>`;
 }
 
 function renderParty(){
@@ -315,7 +297,7 @@ function renderParty(){
             return `<td class="mcell ${v==null?'empty-c':''}" onclick="openScore('${p.id}',${pi},${m})">${v==null?'＋':v}</td>`;}).join('')}
           <td class="total">${tot[pi]}</td></tr>`).join('')}</tbody>
     </table></div>
-    <div class="tapnote">Touche une case pour ${p.type==='pixies'?'ouvrir la grille de décompte':'saisir le score'} d'un joueur.</div>
+    <div class="tapnote">Touche une case pour ${p.type==='pixies'?'saisir le décompte de la manche':'saisir le score'} d'un joueur.</div>
     ${done?`<div class="brk" style="margin-top:14px"><div class="row tot"><span>Vainqueur</span><span>${esc(p.players[tot.indexOf(max)])} 🏆</span></div></div>`:''}`;
 }
 
@@ -340,7 +322,7 @@ function newParty(){
       ${(!state.gameId&&state.name!=='Pixies')?`<div class="field"><input class="inp" placeholder="Nom du jeu" value="${esc(state.name)}" oninput="__setName(this.value)"></div>`:''}
       ${state.type==='manual'?`<div class="field"><label>Nombre de tours</label>
         <div class="stepper"><button onclick="__rounds(-1)">−</button><div class="v">${state.rounds}</div><button onclick="__rounds(1)">＋</button></div></div>`:
-        `<div class="note">🎯 <b>Pixies</b> : 3 manches, décompte automatique par grille (cartes validées, symboles, spéciales, zone de couleur).</div>`}
+        `<div class="note">🎯 <b>Pixies</b> : 3 manches. Par manche — coche les cartes validées, puis points bonus, spirales, croix, taille de zone (×2/×3/×4).</div>`}
       <div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
       <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
       <button class="btn primary" style="margin-top:18px" onclick="__start()">Démarrer</button>`;
@@ -377,10 +359,10 @@ function newParty(){
   draw();
 }
 
-/* ---- Saisie score : grille Pixies OU manuel ---- */
+/* ---- Saisie score : fiche Pixies simplifiée OU manuel ---- */
 function openScore(pid,pi,m){
   const p=partyById(pid);
-  if(p.type==='pixies')return openEditor(pid,pi,m+1);
+  if(p.type==='pixies')return openPixiesSheet(pid,pi,m+1);
   // sheet manuel
   sheet={manual:{pid,pi,m}};renderManualSheet();
 }
@@ -403,123 +385,55 @@ function renderManualSheet(){
 }
 function bumpPlay(p){if(!p._counted&&p.gameId){const g=gameById(p.gameId);if(g){g.timesPlayed=(g.timesPlayed||0)+1;g.lastPlayed=Date.now();}p._counted=true;}}
 
-/* ================= ÉDITEUR PIXIES ================= */
-function openEditor(pid,pi,manche){
-  const p=partyById(pid);const key=pi+'_'+(manche-1);const saved=p.boards[key];
-  editor={pid,pi,manche,cells:saved?JSON.parse(JSON.stringify(saved)):emptyCells(),photo:null};
-  renderEditor();
+/* ================= FICHE PIXIES SIMPLIFIÉE (par manche) ================= */
+function openPixiesSheet(pid,pi,manche){
+  const p=partyById(pid);const key=pi+'_'+(manche-1);
+  const saved=(p.boards[key]&&!Array.isArray(p.boards[key]))?p.boards[key]:null;
+  const c=Object.assign({valid:Array(9).fill(false),spirals:0,crosses:0,bonus:0,zone:0},saved||{});
+  if(!Array.isArray(c.valid)||c.valid.length!==9)c.valid=Array(9).fill(false);
+  sheet={pixies:{pid,pi,manche,c}};
+  renderPixiesSheet();
 }
-function closeEditor(){editor=null;const o=el('overlay');if(o)o.remove();render();}
-function renderEditor(){
-  const p=partyById(editor.pid);let ov=el('overlay');
-  if(!ov){ov=document.createElement('div');ov.id='overlay';ov.className='overlay';document.body.appendChild(ov);}
-  const name=p.players[editor.pi];const r=PixiesScore.scoreManche(editor.cells,editor.manche);
-  ov.innerHTML=`<div class="oinner">
-    <div class="obar"><div class="t">${esc(name)} · Manche ${editor.manche}</div>
-      <button class="close" onclick="closeEditor()">Annuler</button></div>
-    <div class="note">📷 <b>Photo (option)</b> — vue de dessus pour pré-remplir. IA active dans l'aperçu Claude ; sur GitHub Pages elle demande un proxy. La saisie tactile ci-dessous marche partout.</div>
-    <div class="photobar">
-      <label class="btn sm" style="flex:1">📷 Photo<input type="file" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(event)"></label>
-      <button class="btn sm" style="flex:1" id="aibtn" onclick="aiRead()" ${editor.photo?'':'disabled'}>✨ Lire (IA)</button></div>
-    ${editor.photo?`<div class="photoprev"><img src="${editor.photo}"></div>`:''}
-    <div class="grid">${editor.cells.map((c,i)=>cellHTML(c,i)).join('')}</div>
-    <div class="brk">${brkHTML(r)}</div>
-    <button class="btn primary" style="margin-top:16px" onclick="saveEditor()">Enregistrer ${r.total} pts</button>
-    <button class="btn ghost danger" style="margin-top:8px" onclick="resetEditor()">Réinitialiser la grille</button>
-    <div style="height:20px"></div></div>`;
-  if(sheet&&sheet.index!=null)renderSheet();
-}
-function brkHTML(r){return `
-  <div class="row"><span>Cartes validées</span><span>${r.validated}</span></div>
-  <div class="row"><span>Symboles (${r.spiralsBase} spirales${r.special?' + '+r.special+' spéciale':''} − ${r.crosses} croix)</span><span>${r.symbols>=0?'+':''}${r.symbols}</span></div>
-  <div class="row"><span>Plus grande zone ${r.zoneColor?'('+COLOR_FR[r.zoneColor]+' ×'+PixiesScore.mult(editor.manche)+', '+r.zoneCards+' cartes)':'(aucune)'}</span><span>${r.zonePts}</span></div>
-  <div class="row tot"><span>Total manche ${editor.manche}</span><span>${r.total}</span></div>`;}
-function cellHTML(c,i){
-  if(c.state==='empty')return `<div class="gc empty-c" onclick="openCell(${i})"><span class="pos">${i+1}</span>vide</div>`;
-  if(c.state==='down')return `<div class="gc down" onclick="openCell(${i})"><span class="pos">${i+1}</span>cachée</div>`;
-  const bg=c.color==='multi'?'conic-gradient(#ef4444,#eab308,#22c55e,#3b82f6,#a855f7,#ef4444)':COLOR_HEX[c.color]||'#555';
-  const badges=[];if(c.spirals)badges.push(`<span class="bb">↻${c.spirals}</span>`);if(c.crosses)badges.push(`<span class="bb">✕${c.crosses}</span>`);
-  return `<div class="gc" style="background:${bg}" onclick="openCell(${i})"><span class="pos">${i+1}</span>
-    ${badges.length?`<div class="badges">${badges.join('')}</div>`:''}
-    ${c.validated&&c.number?`<span class="num">${c.number}</span>`:''}
-    ${c.special?`<span class="spec" style="background:${c.special==='multi'?'#fff':COLOR_HEX[c.special]}"></span>`:''}
-    ${c.validated?`<span class="val"></span>`:''}</div>`;
-}
-function resetEditor(){if(confirm('Vider la grille ?')){editor.cells=emptyCells();renderEditor();}}
-function saveEditor(){const p=partyById(editor.pid);const r=PixiesScore.scoreManche(editor.cells,editor.manche);
-  p.scores[editor.pi][editor.manche-1]=r.total;p.boards[editor.pi+'_'+(editor.manche-1)]=editor.cells;
-  bumpPlay(p);save();closeEditor();}
-
-/* ---- Fiche cellule ---- */
-function openCell(i){sheet={index:i};renderSheet();}
-function closeSheet(){sheet=null;const s=el('sheetbg');if(s)s.remove();}
-function updateCell(patch){const c=editor.cells[sheet.index];Object.assign(c,patch);renderSheet();
-  const r=PixiesScore.scoreManche(editor.cells,editor.manche);
-  const grid=document.querySelector('#overlay .grid');if(grid)grid.innerHTML=editor.cells.map((c,i)=>cellHTML(c,i)).join('');
-  const brk=document.querySelector('#overlay .brk');if(brk)brk.innerHTML=brkHTML(r);}
-function renderSheet(){
-  const c=editor.cells[sheet.index];let sb=el('sheetbg');
+function renderPixiesSheet(){
+  const {pid,pi,manche,c}=sheet.pixies;const p=partyById(pid);
+  let sb=el('sheetbg');
   if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
     sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
-  const up=c.state==='up';
+  const m2=pixiesMult(manche);const tot=pixiesTotal(c,manche);
+  const stepper=(field,label,hint)=>`
+    <div class="lab">${label}</div>
+    <div class="stepper"><button onclick="pxStep('${field}',-1)">−</button>
+      <div class="v">${+c[field]||0}</div><button onclick="pxStep('${field}',1)">＋</button></div>
+    ${hint?`<div class="hint">${hint}</div>`:''}`;
   sb.innerHTML=`<div class="sheet">
-    <h3>Emplacement ${sheet.index+1}</h3>
-    <div class="seg">
-      <button class="${c.state==='empty'?'on':''}" onclick="updateCell({state:'empty'})">Vide</button>
-      <button class="${c.state==='down'?'on':''}" onclick="updateCell({state:'down'})">Face cachée</button>
-      <button class="${up?'on':''}" onclick="cellUp()">Face visible</button></div>
-    ${up?`
-      <div class="lab">Couleur</div>
-      <div class="swatches">${COLOR_ORDER.map(col=>`<button class="sw ${col==='multi'?'multi':''} ${c.color===col?'on':''}"
-        style="${col==='multi'?'':'background:'+COLOR_HEX[col]}" onclick="updateCell({color:'${col}'})">${COLOR_FR[col]}</button>`).join('')}</div>
-      <div class="lab">Validée ? (recouvre une carte cachée → rapporte son chiffre)</div>
-      <div class="toggle" onclick="updateCell({validated:${!c.validated}})"><span>Carte validée</span><div class="switch ${c.validated?'on':''}"></div></div>
-      ${c.validated?`<div class="lab">Chiffre</div><div class="numgrid">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="${c.number===n?'on':''}" onclick="updateCell({number:${n}})">${n}</button>`).join('')}</div>`:''}
-      <div class="lab">Spirales ↻ (+1)</div>
-      <div class="stepper"><button onclick="step('spirals',-1)">−</button><div class="v">${c.spirals||0}</div><button onclick="step('spirals',1)">＋</button></div>
-      <div class="lab">Croix ✕ (−1)</div>
-      <div class="stepper"><button onclick="step('crosses',-1)">−</button><div class="v">${c.crosses||0}</div><button onclick="step('crosses',1)">＋</button></div>
-      <div class="lab">Carte spéciale (+1 spirale par carte visible de cette couleur)</div>
-      <div class="swatches"><button class="sw none ${!c.special?'on':''}" onclick="updateCell({special:null})">Aucune</button>
-        ${COLOR_ORDER.filter(x=>x!=='multi').map(col=>`<button class="sw ${c.special===col?'on':''}" style="background:${COLOR_HEX[col]}" onclick="updateCell({special:'${col}'})">${COLOR_FR[col]}</button>`).join('')}</div>
-    `:''}
-    <button class="btn primary done" onclick="closeSheet()">OK</button></div>`;
+    <h3>${esc(p.players[pi])} · Manche ${manche}</h3>
+    <div class="lab">Cartes validées (coche celles qui recouvrent une carte cachée)</div>
+    <div class="numgrid">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="${c.valid[n-1]?'on':''}" onclick="pxVal(${n-1})">${n}</button>`).join('')}</div>
+    <div class="hint">Chaque carte cochée rapporte son chiffre. Total validées : ${validatedSum(c)} pts</div>
+    <div class="lab">Points bonus</div>
+    <input class="inp" id="pxbonus" type="number" inputmode="numeric" value="${+c.bonus||0}" oninput="pxBonus(this.value)">
+    <div class="hint">Spirales des cartes spéciales et autres bonus fixes.</div>
+    ${stepper('spirals','Spirales ↻','+1 point chacune')}
+    ${stepper('crosses','Croix ✕','−1 point chacune')}
+    ${stepper('zone','Taille de la zone','× '+m2+' en manche '+manche+' = '+((+c.zone||0)*m2)+' pts')}
+    <div class="brk" style="margin-top:14px">
+      <div class="row"><span>Cartes validées</span><span>${validatedSum(c)}</span></div>
+      <div class="row"><span>Bonus + spirales − croix</span><span>${(+c.bonus||0)+(+c.spirals||0)-(+c.crosses||0)}</span></div>
+      <div class="row"><span>Zone ${+c.zone||0} × ${m2}</span><span>${(+c.zone||0)*m2}</span></div>
+      <div class="row tot"><span>Total manche ${manche}</span><span>${tot}</span></div></div>
+    <button class="btn primary done" onclick="savePixies()">Enregistrer ${tot} pts</button>
+    ${p.scores[pi][manche-1]!=null?`<button class="btn ghost danger" style="margin-top:8px" onclick="clearPixies()">Effacer cette manche</button>`:''}</div>`;
 }
-function cellUp(){const c=editor.cells[sheet.index];updateCell({state:'up',color:c.color||'blue',spirals:c.spirals||0,crosses:c.crosses||0,validated:c.validated||false,number:c.number||null,special:c.special||null});}
-function step(field,d){const c=editor.cells[sheet.index];updateCell({[field]:Math.max(0,Math.min(6,(c[field]||0)+d))});}
-
-/* ---- Photo + IA ---- */
-function onPhoto(e){const f=e.target.files&&e.target.files[0];if(!f)return;
-  const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{
-    const max=1024;let w=img.width,h=img.height;if(w>max||h>max){const s=max/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
-    const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
-    editor.photo=cv.toDataURL('image/jpeg',0.8);renderEditor();};img.src=reader.result;};
-  reader.readAsDataURL(f);}
-async function aiRead(){
-  if(!editor.photo)return;const btn=el('aibtn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span> Lecture…';}
-  const b64=editor.photo.split(',')[1];
-  const prompt=`Tu analyses une photo de l'aire de jeu du jeu Pixies (grille 3x3, emplacements 1 à 9 de gauche à droite puis de haut en bas). Pour CHAQUE emplacement renvoie un objet: state ("empty","down","up"); si "up": color parmi ["blue","green","yellow","orange","red","purple","brown","multi"], number 1-9, validated (true si la carte recouvre une carte cachée qui dépasse), spirals (nombre), crosses (nombre), special (couleur comptée ou null). Réponds UNIQUEMENT par un tableau JSON de 9 objets, sans texte ni Markdown.`;
-  try{
-    const endpoint=db.settings.aiProxy||'https://api.anthropic.com/v1/messages';
-    const resp=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:[
-        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const data=await resp.json();
-    const txt=(data.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n');
-    const arr=JSON.parse(txt.replace(/```json|```/g,'').trim());
-    if(!Array.isArray(arr)||arr.length!==9)throw new Error('format inattendu');
-    editor.cells=arr.map(o=>{if(!o||o.state==='empty')return{state:'empty'};if(o.state==='down')return{state:'down'};
-      const col=COLOR_ORDER.includes(o.color)?o.color:'blue';const sp=(COLOR_ORDER.includes(o.special)&&o.special!=='multi')?o.special:null;
-      return{state:'up',color:col,validated:!!o.validated,number:o.number?Math.max(1,Math.min(9,o.number)):null,
-        spirals:o.spirals?Math.max(0,Math.min(6,o.spirals)):0,crosses:o.crosses?Math.max(0,Math.min(6,o.crosses)):0,special:sp};});
-    renderEditor();alert('Grille pré-remplie par l\'IA. Vérifie chaque carte (surtout les validées) puis ajuste.');
-  }catch(err){renderEditor();
-    const hasProxy=!!db.settings.aiProxy;
-    alert('Lecture IA indisponible ('+err.message+').\n\n'+(hasProxy?
-      'Vérifie l\'URL du proxy IA dans Réglages et la clé côté worker.':
-      'Elle fonctionne dans l\'aperçu Claude. Sur GitHub Pages, renseigne l\'URL du proxy IA dans Réglages.')+' La saisie manuelle reste dispo.');}
-}
+function pxVal(i){const c=sheet.pixies.c;c.valid[i]=!c.valid[i];renderPixiesSheet();}
+function pxBonus(v){const c=sheet.pixies.c;c.bonus=v===''?0:(parseInt(v,10)||0);
+  renderPixiesSheet();const i=el('pxbonus');if(i){i.focus();const s=String(+c.bonus||0);i.setSelectionRange(s.length,s.length);}}
+function pxStep(field,d){const c=sheet.pixies.c;const min=(field==='bonus')?-99:0;
+  c[field]=Math.max(min,(+c[field]||0)+d);renderPixiesSheet();}
+function savePixies(){const {pid,pi,manche,c}=sheet.pixies;const p=partyById(pid);
+  p.scores[pi][manche-1]=pixiesTotal(c,manche);p.boards[pi+'_'+(manche-1)]=c;
+  bumpPlay(p);save();closeSheet();render();}
+function clearPixies(){const {pid,pi,manche}=sheet.pixies;const p=partyById(pid);
+  p.scores[pi][manche-1]=null;delete p.boards[pi+'_'+(manche-1)];save();closeSheet();render();}
 
 /* ================= ONGLET LUDOTHÈQUE ================= */
 function newGameObj(name){return{id:uid(),name:name||'',bggId:null,thumb:null,minP:null,maxP:null,
@@ -651,16 +565,14 @@ function renderReglages(){
     <div class="lab">Proxy Cloudflare Worker (option)</div>
     <div class="field"><label>Relais BGG (import de jeux)</label>
       <input class="inp" id="proxyin" placeholder="https://ton-worker.workers.dev/?url=" value="${esc(db.settings.proxy||'')}"></div>
-    <div class="field"><label>Relais IA (lecture photo)</label>
-      <input class="inp" id="aiproxyin" placeholder="https://ton-worker.workers.dev/ai" value="${esc(db.settings.aiProxy||'')}"></div>
-    <button class="btn ghost sm" style="width:100%" onclick="saveProxy()">Enregistrer les proxys</button>
-    <div class="note" style="margin-top:8px">Sans proxy, la recherche BGG tente l'<b>API JSON directe</b> depuis ton navigateur (comme TMDB dans Suivi) : ça marche seulement si BGG autorise le CORS pour ton domaine, et cette API interne peut casser sans préavis. Avec un proxy, l'import passe par l'API XML stable (nom, vignette, joueurs, durée) et la lecture photo par <b>/ai</b>. La ludothèque reste utilisable 100 % à la main dans tous les cas.</div>
+    <button class="btn ghost sm" style="width:100%" onclick="saveProxy()">Enregistrer le proxy</button>
+    <div class="note" style="margin-top:8px">Sans proxy, la recherche BGG tente l'<b>API JSON directe</b> depuis ton navigateur : ça marche seulement si BGG autorise le CORS pour ton domaine. Avec un proxy, l'import passe par l'API XML stable (nom, vignette, joueurs, durée). La ludothèque reste utilisable 100 % à la main dans tous les cas.</div>
 
     <div class="lab">Zone de danger</div>
     <button class="btn danger" onclick="wipeAll()">Tout effacer</button>
     <div class="footer">Comptoir · fichier HTML unique, hors-ligne, localStorage.<br>Pixies © Bombyx — cette app est un compteur non-officiel.</div>`;
 }
-function saveProxy(){db.settings.proxy=el('proxyin').value.trim();db.settings.aiProxy=el('aiproxyin').value.trim();save();alert('Proxys enregistrés.');}
+function saveProxy(){db.settings.proxy=el('proxyin').value.trim();save();alert('Proxy enregistré.');}
 function exportData(){
   const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
