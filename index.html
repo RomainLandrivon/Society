@@ -6,9 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Scores">
+<meta name="apple-mobile-web-app-title" content="Comptoir">
 <meta name="theme-color" content="#12131a">
-<title>Comptoir · Scores de jeux</title>
+<title>Comptoir · scores & ludothèque</title>
 <style>
 :root{
   --bg:#12131a; --bg2:#1a1c26; --card:#22242f; --card2:#2a2d3a;
@@ -16,25 +16,26 @@
   --accent:#7cf2c8; --accent2:#f2b47c; --danger:#ff6b6b;
   --blue:#3b82f6; --green:#22c55e; --yellow:#eab308; --orange:#f97316;
   --red:#ef4444; --purple:#a855f7; --brown:#a16207;
-  --radius:16px;
+  --radius:16px; --tabh:64px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
-body{padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 8px) env(safe-area-inset-left)}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-input{font-size:16px;font-family:inherit} /* 16px = pas de zoom iOS */
-.app{max-width:560px;margin:0 auto;padding:14px 14px 40px}
+input,select,textarea{font-size:16px;font-family:inherit}
+.app{max-width:560px;margin:0 auto;
+  padding:calc(env(safe-area-inset-top) + 4px) 14px calc(var(--tabh) + env(safe-area-inset-bottom) + 24px)}
 .hidden{display:none!important}
 
 /* Header */
-.top{display:flex;align-items:center;gap:10px;margin-bottom:16px;min-height:36px}
-.top h1{font-size:19px;font-weight:700;margin:0;letter-spacing:.3px;flex:1}
+.top{display:flex;align-items:center;gap:10px;margin:6px 0 16px;min-height:38px}
+.top h1{font-size:19px;font-weight:700;margin:0;letter-spacing:.3px}
+.brand{display:flex;flex-direction:column;flex:1;line-height:1.15;min-width:0}
+.brand h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .top .sub{font-size:12px;color:var(--dim);font-weight:500}
-.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--card);
+.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--card);flex:none;
   display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--txt);border:1px solid var(--line)}
-.brand{display:flex;flex-direction:column;flex:1;line-height:1.15}
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
@@ -45,39 +46,63 @@ input{font-size:16px;font-family:inherit} /* 16px = pas de zoom iOS */
 .btn.sm{padding:9px 12px;font-size:14px;width:auto}
 .btn:active{transform:scale(.985)}
 .btn.danger{color:var(--danger);border-color:#4a2a30}
+.btn:disabled{opacity:.4}
 
-/* Cards / lists */
+/* Tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(18,19,26,.92);
+  backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  padding:6px 0 env(safe-area-inset-bottom);display:flex}
+.tabbar .inner{max-width:560px;margin:0 auto;width:100%;display:flex}
+.tabbtn{flex:1;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 0;color:var(--dim);font-size:11px;font-weight:600}
+.tabbtn .ic{font-size:21px;line-height:1}
+.tabbtn.on{color:var(--accent)}
+
+/* Lists / tiles */
 .list{display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
   padding:14px 15px;display:flex;align-items:center;gap:12px}
 .tile .grow{flex:1;min-width:0}
-.tile .t{font-weight:650;font-size:15px}
-.tile .m{font-size:12.5px;color:var(--dim);margin-top:3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tile .badge{font-size:12px;font-weight:700;color:var(--accent);
-  background:rgba(124,242,200,.1);padding:4px 9px;border-radius:20px}
-.chev{color:var(--dim);font-size:20px}
-.empty{text-align:center;color:var(--dim);padding:40px 20px;font-size:14px;line-height:1.6}
-.gamechip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
-  color:var(--accent2);background:rgba(242,180,124,.1);padding:3px 8px;border-radius:8px;margin-bottom:8px}
+.tile .t{font-weight:650;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .m{font-size:12.5px;color:var(--dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .thumb{width:46px;height:46px;border-radius:10px;object-fit:cover;background:var(--card2);flex:none}
+.tile .thumb.ph{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--dim)}
+.badge{font-size:12px;font-weight:700;color:var(--accent);background:rgba(124,242,200,.1);padding:4px 9px;border-radius:20px;flex:none}
+.chev{color:var(--dim);font-size:20px;flex:none}
+.empty{text-align:center;color:var(--dim);padding:38px 20px;font-size:14px;line-height:1.6}
+.gamechip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+  color:var(--accent2);background:rgba(242,180,124,.1);padding:3px 8px;border-radius:8px;margin-bottom:7px}
+.statuschip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;flex:none}
+.st-envie{color:#f2b47c;background:rgba(242,180,124,.12)}
+.st-possede{color:#7cc4f2;background:rgba(124,196,242,.12)}
+.st-joue{color:#7cf2c8;background:rgba(124,242,200,.12)}
+
+/* Filters */
+.filters{margin-top:12px}
+.search{width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;color:var(--txt);margin-bottom:10px}
+.segrow{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.segrow button{white-space:nowrap;padding:8px 13px;border-radius:20px;font-size:13px;font-weight:600;
+  background:var(--card);border:1px solid var(--line);color:var(--dim)}
+.segrow button.on{background:var(--accent);color:#062018;border-color:transparent}
 
 /* Score table */
-.tablewrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:6px}
-table{width:100%;border-collapse:collapse}
+.tablewrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto;margin-top:6px}
+table{width:100%;border-collapse:collapse;min-width:100%}
 th,td{padding:12px 8px;text-align:center;font-size:14px}
 thead th{font-size:11px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.5px;
   border-bottom:1px solid var(--line);background:var(--bg2)}
 thead th:first-child,tbody td:first-child{text-align:left;padding-left:14px;font-weight:650}
 tbody tr{border-bottom:1px solid var(--line)}
 tbody tr:last-child{border-bottom:none}
-td.mcell{color:var(--accent);font-weight:650;cursor:pointer;position:relative}
+td.mcell{color:var(--accent);font-weight:650;cursor:pointer}
 td.mcell.empty-c{color:var(--dim)}
 td.total{font-weight:800;font-size:16px}
 tr.winner td.total{color:var(--accent)}
 tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .tapnote{text-align:center;color:var(--dim);font-size:12px;margin-top:10px}
 
-/* Editor overlay */
+/* Overlay editor */
 .overlay{position:fixed;inset:0;background:var(--bg);z-index:50;overflow-y:auto;
   padding:env(safe-area-inset-top) 0 40px;-webkit-overflow-scrolling:touch}
 .oinner{max-width:560px;margin:0 auto;padding:14px 14px 60px}
@@ -86,7 +111,7 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .obar .t{flex:1;font-weight:700;font-size:16px}
 .obar .close{font-size:15px;color:var(--accent);font-weight:650;padding:8px}
 
-/* Grid 3x3 */
+/* Pixies grid */
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
 .gc{aspect-ratio:3/4;border-radius:12px;border:1.5px solid var(--line);
   background:var(--card2);position:relative;display:flex;align-items:center;justify-content:center;
@@ -97,25 +122,24 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .gc .badges{position:absolute;top:4px;left:0;right:0;display:flex;justify-content:center;gap:3px;font-size:10px}
 .gc .bb{background:rgba(0,0,0,.45);border-radius:6px;padding:1px 4px;font-weight:700;line-height:1.3}
 .gc .val{position:absolute;bottom:0;left:0;right:0;height:7px;background:var(--accent)}
-.gc .spec{position:absolute;bottom:5px;right:5px;width:14px;height:14px;border-radius:50%;
-  border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.gc .spec{position:absolute;bottom:5px;right:5px;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
 .gc .pos{position:absolute;top:3px;left:5px;font-size:9px;color:rgba(255,255,255,.55);font-weight:700}
 
 /* Breakdown */
 .brk{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-top:6px}
-.brk .row{display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;color:var(--dim)}
-.brk .row span:last-child{color:var(--txt);font-weight:650;font-variant-numeric:tabular-nums}
+.brk .row{display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;color:var(--dim);gap:12px}
+.brk .row span:last-child{color:var(--txt);font-weight:650;font-variant-numeric:tabular-nums;flex:none}
 .brk .row.tot{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;font-size:16px;color:var(--txt)}
 .brk .row.tot span:last-child{color:var(--accent);font-weight:800;font-size:20px}
 
-/* Cell sheet */
+/* Sheet */
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:flex;align-items:flex-end}
 .sheet{background:var(--bg2);border-radius:22px 22px 0 0;width:100%;max-width:560px;margin:0 auto;
-  padding:16px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:88vh;overflow-y:auto;
+  padding:16px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:90vh;overflow-y:auto;
   border-top:1px solid var(--line);animation:slideup .18s ease}
 @keyframes slideup{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
 .sheet h3{margin:0 0 14px;font-size:16px;display:flex;align-items:center;gap:8px}
-.seg{display:flex;background:var(--card);border-radius:12px;padding:4px;gap:4px;margin-bottom:16px}
+.seg{display:flex;background:var(--card);border-radius:12px;padding:4px;gap:4px;margin-bottom:6px}
 .seg button{flex:1;padding:10px;border-radius:9px;font-weight:600;font-size:14px;color:var(--dim)}
 .seg button.on{background:var(--accent);color:#062018}
 .lab{font-size:12px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px}
@@ -137,400 +161,522 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.15s}
 .switch.on::after{left:23px}
 .sheet .done{margin-top:20px}
+.bigin{width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;color:var(--txt);font-size:26px;font-weight:800;text-align:center}
+
+/* Form fields */
+.field{margin-bottom:12px}
+.field>label{display:block;font-size:12px;color:var(--dim);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.inp{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--txt)}
+textarea.inp{min-height:70px;resize:vertical}
+.two{display:flex;gap:10px}
+.two>.field{flex:1}
+.playerline{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.playerline input{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--txt)}
+.playerline button{color:var(--danger);font-size:22px;padding:6px 10px}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:11px;font-weight:700;color:var(--dim);background:var(--card2);padding:4px 9px;border-radius:8px}
 
 /* Photo / IA */
 .photobar{display:flex;gap:8px;margin-bottom:6px}
 .photobar .btn{flex:1}
-.photoprev{margin:10px 0;border-radius:12px;overflow:hidden;border:1px solid var(--line);position:relative}
+.photoprev{margin:10px 0;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
 .photoprev img{width:100%;display:block;max-height:220px;object-fit:cover}
-.ai-note{font-size:12px;color:var(--dim);line-height:1.5;background:var(--card);
-  border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px}
-.ai-note b{color:var(--accent2)}
-.spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);
-  border-top-color:#062018;border-radius:50%;animation:sp .7s linear infinite}
+.note{font-size:12px;color:var(--dim);line-height:1.5;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px}
+.note b{color:var(--accent2)}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#062018;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-
-.fieldrow{display:flex;gap:8px;margin-bottom:10px}
-.fieldrow input{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;
-  padding:12px 14px;color:var(--txt)}
-.hint{font-size:12px;color:var(--dim);line-height:1.5;margin:2px 0 12px}
 .footer{text-align:center;color:var(--dim);font-size:11px;margin-top:26px;line-height:1.6}
-.playerline{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-.playerline input{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--txt)}
-.playerline button{color:var(--danger);font-size:22px;padding:6px 10px}
+.rate{display:flex;gap:6px}
+.rate button{flex:1;aspect-ratio:1;border-radius:9px;background:var(--card);font-weight:700;font-size:14px;color:var(--dim)}
+.rate button.on{background:var(--accent2);color:#2a1608}
 </style>
 </head>
 <body>
 <div class="app" id="app"></div>
+<nav class="tabbar"><div class="inner" id="tabbar"></div></nav>
 
 <script>
-/* ============ MOTEUR DE SCORE (identique au test node, vérifié = 40 pts) ============ */
+/* ================= MOTEUR PIXIES (vérifié = 40 pts sur l'exemple du livret) ================= */
 (function (global) {
-  const COLORS = ['blue','green','yellow','orange','red','purple','brown'];
-  function mult(m){ return m + 1; }
-  function isColor(cell,c){ if(!cell||cell.state!=='up')return false; return cell.color===c||cell.color==='multi'; }
+  const COLORS=['blue','green','yellow','orange','red','purple','brown'];
+  function mult(m){return m+1;}
+  function isColor(cell,c){if(!cell||cell.state!=='up')return false;return cell.color===c||cell.color==='multi';}
   function largestZone(cells){
     let best=0,bestColor=null;
-    for(const c of COLORS){
-      const seen=new Array(9).fill(false);
-      for(let i=0;i<9;i++){
-        if(seen[i]||!isColor(cells[i],c))continue;
+    for(const c of COLORS){const seen=new Array(9).fill(false);
+      for(let i=0;i<9;i++){if(seen[i]||!isColor(cells[i],c))continue;
         let size=0;const stack=[i];seen[i]=true;
-        while(stack.length){
-          const x=stack.pop();size++;
-          const r=Math.floor(x/3),col=x%3;const nb=[];
-          if(r>0)nb.push(x-3); if(r<2)nb.push(x+3); if(col>0)nb.push(x-1); if(col<2)nb.push(x+1);
-          for(const n of nb) if(!seen[n]&&isColor(cells[n],c)){seen[n]=true;stack.push(n);}
-        }
-        if(size>best){best=size;bestColor=c;}
-      }
-    }
-    return {size:best>=2?best:0,color:best>=2?bestColor:null};
+        while(stack.length){const x=stack.pop();size++;const r=Math.floor(x/3),col=x%3;const nb=[];
+          if(r>0)nb.push(x-3);if(r<2)nb.push(x+3);if(col>0)nb.push(x-1);if(col<2)nb.push(x+1);
+          for(const n of nb)if(!seen[n]&&isColor(cells[n],c)){seen[n]=true;stack.push(n);}}
+        if(size>best){best=size;bestColor=c;}}}
+    return{size:best>=2?best:0,color:best>=2?bestColor:null};
   }
   function scoreManche(cells,manche){
     let validated=0,spirals=0,crosses=0,special=0;
-    for(const cell of cells){ if(!cell||cell.state!=='up')continue;
+    for(const cell of cells){if(!cell||cell.state!=='up')continue;
       if(cell.validated&&cell.number)validated+=cell.number;
-      spirals+=(cell.spirals||0); crosses+=(cell.crosses||0);
-    }
-    for(const cell of cells){ if(!cell||cell.state!=='up'||!cell.special)continue;
-      let cnt=0; for(const c2 of cells) if(isColor(c2,cell.special))cnt++; special+=cnt;
-    }
-    const symbols=spirals+special-crosses;
-    const z=largestZone(cells);
-    const zonePts=z.size*mult(manche);
-    return {validated,spiralsBase:spirals,crosses,special,symbols,zoneCards:z.size,zoneColor:z.color,zonePts,total:validated+symbols+zonePts};
+      spirals+=(cell.spirals||0);crosses+=(cell.crosses||0);}
+    for(const cell of cells){if(!cell||cell.state!=='up'||!cell.special)continue;
+      let cnt=0;for(const c2 of cells)if(isColor(c2,cell.special))cnt++;special+=cnt;}
+    const symbols=spirals+special-crosses;const z=largestZone(cells);const zonePts=z.size*mult(manche);
+    return{validated,spiralsBase:spirals,crosses,special,symbols,zoneCards:z.size,zoneColor:z.color,zonePts,total:validated+symbols+zonePts};
   }
   global.PixiesScore={scoreManche,largestZone,COLORS,mult};
 })(window);
 
-/* ============ CONSTANTES ============ */
+/* ================= CONSTANTES ================= */
 const COLOR_HEX={blue:'#3b82f6',green:'#22c55e',yellow:'#eab308',orange:'#f97316',red:'#ef4444',purple:'#a855f7',brown:'#a16207'};
 const COLOR_FR={blue:'Bleu',green:'Vert',yellow:'Jaune',orange:'Orange',red:'Rouge',purple:'Violet',brown:'Marron',multi:'Multi'};
 const COLOR_ORDER=['blue','green','yellow','orange','red','purple','brown','multi'];
+const STATUS_FR={envie:'Envie',possede:'Possédé',joue:'Joué'};
 const STORE='comptoirScore_v1';
 
-/* ============ DONNÉES ============ */
-let db={parties:[]};
-try{const raw=localStorage.getItem(STORE); if(raw)db=JSON.parse(raw);}catch(e){}
+/* ================= DONNÉES ================= */
+let db={parties:[],games:[],settings:{proxy:''}};
+try{const raw=localStorage.getItem(STORE);if(raw)db=JSON.parse(raw);}catch(e){}
+db.parties=db.parties||[];db.games=db.games||[];db.settings=db.settings||{};
+db.settings.proxy=db.settings.proxy||'';db.settings.aiProxy=db.settings.aiProxy||'';
+// migration douce : anciennes parties Pixies
+db.parties.forEach(p=>{if(!p.type)p.type=(p.game==='Pixies')?'pixies':'manual';
+  if(!p.rounds)p.rounds=(p.type==='pixies')?3:(p.scores[0]?p.scores[0].length:1);
+  if(!p.boards)p.boards={};});
 function save(){try{localStorage.setItem(STORE,JSON.stringify(db));}catch(e){alert('Sauvegarde impossible : '+e.message);}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
-/* ============ ÉTAT UI ============ */
-let route={name:'home'};       // home | party
-let editor=null;               // {partyId, pi, manche, cells, photo}
-let sheet=null;                // {index}
+/* ================= ÉTAT UI ================= */
+let route={tab:'parties'};       // tab: parties|ludo|reglages ; + view: party
+let editor=null;                 // éditeur Pixies
+let sheet=null;                  // fiche cellule
+let ludoFilter={q:'',status:'tous'};
 
-/* ============ HELPERS ============ */
+/* ================= HELPERS ================= */
 const el=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function emptyCells(){return Array.from({length:9},()=>({state:'empty'}));}
 function partyById(id){return db.parties.find(p=>p.id===id);}
-function partyTotals(p){return p.players.map((_,pi)=>{
-  let s=0;for(let m=0;m<3;m++){const v=p.scores[pi][m];if(v!=null)s+=v;}return s;});}
+function gameById(id){return db.games.find(g=>g.id===id);}
+function partyTotals(p){return p.players.map((_,pi)=>{let s=0;for(let m=0;m<p.rounds;m++){const v=p.scores[pi][m];if(v!=null)s+=v;}return s;});}
 function partyComplete(p){return p.scores.every(row=>row.every(v=>v!=null));}
+function fmtDate(t){return new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});}
 
-/* ============ RENDER ============ */
+/* ================= RENDER SHELL ================= */
 function render(){
-  if(route.name==='home')renderHome();
-  else if(route.name==='party')renderParty();
+  renderTabs();
+  if(route.view==='party')return renderParty();
+  if(route.tab==='parties')return renderParties();
+  if(route.tab==='ludo')return renderLudo();
+  if(route.tab==='reglages')return renderReglages();
 }
+function renderTabs(){
+  const tabs=[['parties','🎲','Parties'],['ludo','📚','Ludothèque'],['reglages','⚙︎','Réglages']];
+  el('tabbar').innerHTML=tabs.map(([k,ic,lab])=>`
+    <button class="tabbtn ${route.tab===k&&!route.view?'on':''}" onclick="goTab('${k}')">
+      <span class="ic">${ic}</span>${lab}</button>`).join('');
+}
+function goTab(t){route={tab:t};render();}
 
-function renderHome(){
+/* ================= ONGLET PARTIES ================= */
+function renderParties(){
   const parties=[...db.parties].sort((a,b)=>b.created-a.created);
   el('app').innerHTML=`
-    <div class="top">
-      <div class="iconbtn">🎲</div>
-      <div class="brand"><h1>Comptoir</h1><span class="sub">Compteur de scores · jeux de société</span></div>
-    </div>
+    <div class="top"><div class="iconbtn">🎲</div>
+      <div class="brand"><h1>Parties</h1><span class="sub">Compteur de scores</span></div></div>
     <button class="btn primary" onclick="newParty()">＋ Nouvelle partie</button>
     <div class="list">
       ${parties.length?parties.map(p=>{
-        const tot=partyTotals(p);const max=Math.max(...tot);
+        const tot=partyTotals(p);const done=partyComplete(p);
         const lead=p.players.map((n,i)=>({n,t:tot[i]})).sort((a,b)=>b.t-a.t)[0];
-        const done=partyComplete(p);
         return `<div class="tile" onclick="openParty('${p.id}')">
-          <div class="grow">
-            <span class="gamechip">✦ ${esc(p.game)}</span>
+          <div class="grow"><span class="gamechip">✦ ${esc(p.game)}</span>
             <div class="t">${esc(p.players.join(' · '))}</div>
-            <div class="m">${new Date(p.created).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}${done?' · terminée':' · en cours'}</div>
-          </div>
-          <div class="badge">${done?'🏆 '+esc(lead.n):lead.t+' pts'}</div>
-          <div class="chev">›</div>
-        </div>`;}).join(''):
-        `<div class="empty">Aucune partie enregistrée.<br>Lance une nouvelle partie de Pixies pour commencer.</div>`}
+            <div class="m">${fmtDate(p.created)} · ${done?'terminée':'en cours'}</div></div>
+          <div class="badge">${done?'🏆 '+esc(lead.n):lead.t+' pts'}</div><div class="chev">›</div></div>`;
+      }).join(''):`<div class="empty">Aucune partie.<br>Lance une nouvelle partie pour compter les points.</div>`}
     </div>
-    <div class="footer">Pixies · décompte automatique (cartes validées, symboles, spéciales, plus grande zone de couleur).<br>D'autres jeux pourront être ajoutés.</div>`;
+    <div class="footer">Pixies : décompte automatique complet.<br>Autres jeux : saisie manuelle des scores par manche.</div>`;
 }
 
 function renderParty(){
   const p=partyById(route.pid);
-  if(!p){route={name:'home'};return render();}
+  if(!p){route={tab:'parties'};return render();}
   const tot=partyTotals(p);const max=Math.max(...tot);const done=partyComplete(p);
+  const cols=Array.from({length:p.rounds},(_,i)=>i);
+  const lab=p.type==='pixies'?(i=>'M'+(i+1)):(i=>'R'+(i+1));
   el('app').innerHTML=`
-    <div class="top">
-      <button class="iconbtn" onclick="goHome()">‹</button>
-      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${esc(p.players.length)} joueurs · 3 manches</span></div>
-      <button class="iconbtn" onclick="deleteParty('${p.id}')" style="color:var(--danger)">🗑</button>
-    </div>
+    <div class="top"><button class="iconbtn" onclick="goTab('parties')">‹</button>
+      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${p.players.length} joueurs · ${p.rounds} ${p.type==='pixies'?'manches':'tours'}</span></div>
+      <button class="iconbtn" onclick="deleteParty('${p.id}')" style="color:var(--danger)">🗑</button></div>
     <div class="tablewrap"><table>
-      <thead><tr><th>Joueur</th><th>M1</th><th>M2</th><th>M3</th><th>Total</th></tr></thead>
-      <tbody>
-      ${p.players.map((name,pi)=>`
-        <tr class="${done&&tot[pi]===max&&max>0?'winner':''}">
-          <td>${esc(name)}</td>
-          ${[0,1,2].map(m=>{const v=p.scores[pi][m];
-            return `<td class="mcell ${v==null?'empty-c':''}" onclick="openEditor('${p.id}',${pi},${m+1})">${v==null?'＋':v}</td>`;}).join('')}
-          <td class="total">${tot[pi]}</td>
-        </tr>`).join('')}
-      </tbody>
+      <thead><tr><th>Joueur</th>${cols.map(i=>`<th>${lab(i)}</th>`).join('')}<th>Total</th></tr></thead>
+      <tbody>${p.players.map((name,pi)=>`
+        <tr class="${done&&tot[pi]===max&&max>0?'winner':''}"><td>${esc(name)}</td>
+          ${cols.map(m=>{const v=p.scores[pi][m];
+            return `<td class="mcell ${v==null?'empty-c':''}" onclick="openScore('${p.id}',${pi},${m})">${v==null?'＋':v}</td>`;}).join('')}
+          <td class="total">${tot[pi]}</td></tr>`).join('')}</tbody>
     </table></div>
-    <div class="tapnote">Touche une case M1 / M2 / M3 pour compter la manche d'un joueur.</div>
+    <div class="tapnote">Touche une case pour ${p.type==='pixies'?'ouvrir la grille de décompte':'saisir le score'} d'un joueur.</div>
     ${done?`<div class="brk" style="margin-top:14px"><div class="row tot"><span>Vainqueur</span><span>${esc(p.players[tot.indexOf(max)])} 🏆</span></div></div>`:''}`;
 }
 
-/* ============ NAV ============ */
-function goHome(){route={name:'home'};render();}
-function openParty(id){route={name:'party',pid:id};render();}
+function goTab_party(){}
+function openParty(id){route={tab:'parties',view:'party',pid:id};render();}
+function deleteParty(id){if(!confirm('Supprimer cette partie ?'))return;db.parties=db.parties.filter(p=>p.id!==id);save();goTab('parties');}
 
+/* ---- Nouvelle partie ---- */
 function newParty(){
-  // Mini-formulaire joueurs directement en overlay simple
-  const names=['','']; 
+  const state={gameId:'',name:'',type:'manual',rounds:1,names:['','']};
   const draw=()=>{
+    const games=[...db.games].sort((a,b)=>a.name.localeCompare(b.name));
     el('app').innerHTML=`
-    <div class="top"><button class="iconbtn" onclick="goHome()">‹</button>
-      <div class="brand"><h1>Nouvelle partie</h1><span class="sub">Pixies</span></div></div>
-    <div class="lab" style="margin-top:4px">Joueurs (2 à 5)</div>
-    <div id="players"></div>
-    <button class="btn ghost sm" style="width:100%;margin-top:2px" onclick="__addP()">＋ Ajouter un joueur</button>
-    <button class="btn primary" style="margin-top:18px" onclick="__startP()">Démarrer la partie</button>`;
-    const box=el('players');
-    box.innerHTML=names.map((n,i)=>`<div class="playerline">
+      <div class="top"><button class="iconbtn" onclick="goTab('parties')">‹</button>
+        <div class="brand"><h1>Nouvelle partie</h1><span class="sub">Choisis le jeu et les joueurs</span></div></div>
+      <div class="field"><label>Jeu</label>
+        <select class="inp" onchange="__pickGame(this.value)">
+          <option value="">— Saisir un nom —</option>
+          <option value="__pixies" ${state.name==='Pixies'&&!state.gameId?'selected':''}>Pixies (décompte auto)</option>
+          ${games.map(g=>`<option value="${g.id}" ${state.gameId===g.id?'selected':''}>${esc(g.name)}${g.name==='Pixies'?' (décompte auto)':''}</option>`).join('')}
+        </select></div>
+      ${(!state.gameId&&state.name!=='Pixies')?`<div class="field"><input class="inp" placeholder="Nom du jeu" value="${esc(state.name)}" oninput="__setName(this.value)"></div>`:''}
+      ${state.type==='manual'?`<div class="field"><label>Nombre de tours</label>
+        <div class="stepper"><button onclick="__rounds(-1)">−</button><div class="v">${state.rounds}</div><button onclick="__rounds(1)">＋</button></div></div>`:
+        `<div class="note">🎯 <b>Pixies</b> : 3 manches, décompte automatique par grille (cartes validées, symboles, spéciales, zone de couleur).</div>`}
+      <div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
+      <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
+      <button class="btn primary" style="margin-top:18px" onclick="__start()">Démarrer</button>`;
+    el('players').innerHTML=state.names.map((n,i)=>`<div class="playerline">
       <input placeholder="Joueur ${i+1}" value="${esc(n)}" oninput="__setP(${i},this.value)">
-      ${names.length>2?`<button onclick="__delP(${i})">×</button>`:''}</div>`).join('');
+      ${state.names.length>2?`<button onclick="__delP(${i})">×</button>`:''}</div>`).join('');
   };
-  window.__setP=(i,v)=>{names[i]=v;};
-  window.__addP=()=>{if(names.length<5){names.push('');draw();}};
-  window.__delP=(i)=>{names.splice(i,1);draw();};
-  window.__startP=()=>{
-    const clean=names.map(n=>n.trim()).filter(Boolean);
-    if(clean.length<2){alert('Il faut au moins 2 joueurs.');return;}
-    const p={id:uid(),game:'Pixies',created:Date.now(),players:clean,
-      scores:clean.map(()=>[null,null,null]),boards:{}};
-    db.parties.push(p);save();route={name:'party',pid:p.id};render();
+  window.__pickGame=v=>{
+    if(v==='__pixies'){state.gameId='';state.name='Pixies';state.type='pixies';state.rounds=3;}
+    else if(v===''){state.gameId='';state.name='';state.type='manual';}
+    else{const g=gameById(v);state.gameId=v;state.name=g.name;state.type=(g.name==='Pixies')?'pixies':'manual';if(state.type==='pixies')state.rounds=3;}
+    draw();
+  };
+  window.__setName=v=>{state.name=v;};
+  window.__rounds=d=>{state.rounds=Math.max(1,Math.min(12,state.rounds+d));draw();};
+  window.__setP=(i,v)=>{state.names[i]=v;};
+  window.__addP=()=>{if(state.names.length<6){state.names.push('');draw();}};
+  window.__delP=i=>{state.names.splice(i,1);draw();};
+  window.__start=()=>{
+    const clean=state.names.map(n=>n.trim()).filter(Boolean);
+    if(clean.length<2)return alert('Il faut au moins 2 joueurs.');
+    const name=(state.name||'').trim();
+    if(!name)return alert('Choisis ou nomme un jeu.');
+    // lien ludothèque : crée l'entrée si nom inédit
+    let gameId=state.gameId;
+    if(!gameId){const existing=db.games.find(g=>g.name.toLowerCase()===name.toLowerCase());
+      if(existing)gameId=existing.id;
+      else{const g=newGameObj(name);g.status='joue';db.games.push(g);gameId=g.id;}}
+    const rounds=state.type==='pixies'?3:state.rounds;
+    const p={id:uid(),gameId,game:name,type:state.type,rounds,created:Date.now(),
+      players:clean,scores:clean.map(()=>Array(rounds).fill(null)),boards:{}};
+    db.parties.push(p);save();openParty(p.id);
   };
   draw();
 }
 
-function deleteParty(id){
-  if(!confirm('Supprimer cette partie ?'))return;
-  db.parties=db.parties.filter(p=>p.id!==id);save();goHome();
-}
-
-/* ============ ÉDITEUR DE MANCHE ============ */
-function openEditor(pid,pi,manche){
+/* ---- Saisie score : grille Pixies OU manuel ---- */
+function openScore(pid,pi,m){
   const p=partyById(pid);
-  const key=pi+'_'+(manche-1);
-  const saved=p.boards[key];
+  if(p.type==='pixies')return openEditor(pid,pi,m+1);
+  // sheet manuel
+  sheet={manual:{pid,pi,m}};renderManualSheet();
+}
+function renderManualSheet(){
+  const {pid,pi,m}=sheet.manual;const p=partyById(pid);
+  let sb=el('sheetbg');
+  if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
+    sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
+  const cur=p.scores[pi][m];
+  sb.innerHTML=`<div class="sheet">
+    <h3>${esc(p.players[pi])} · Tour ${m+1}</h3>
+    <input class="bigin" id="manin" type="number" inputmode="numeric" value="${cur==null?'':cur}" placeholder="0">
+    <button class="btn primary done" onclick="__saveManual()">Enregistrer</button>
+    ${cur!=null?`<button class="btn ghost danger" style="margin-top:8px" onclick="__clearManual()">Effacer ce tour</button>`:''}</div>`;
+  setTimeout(()=>{const i=el('manin');if(i)i.focus();},50);
+  window.__saveManual=()=>{const raw=el('manin').value.trim();const v=raw===''?null:parseInt(raw,10);
+    if(raw!==''&&isNaN(v))return alert('Nombre invalide.');
+    p.scores[pi][m]=v;bumpPlay(p);save();closeSheet();render();};
+  window.__clearManual=()=>{p.scores[pi][m]=null;save();closeSheet();render();};
+}
+function bumpPlay(p){if(!p._counted&&p.gameId){const g=gameById(p.gameId);if(g){g.timesPlayed=(g.timesPlayed||0)+1;g.lastPlayed=Date.now();}p._counted=true;}}
+
+/* ================= ÉDITEUR PIXIES ================= */
+function openEditor(pid,pi,manche){
+  const p=partyById(pid);const key=pi+'_'+(manche-1);const saved=p.boards[key];
   editor={pid,pi,manche,cells:saved?JSON.parse(JSON.stringify(saved)):emptyCells(),photo:null};
   renderEditor();
 }
 function closeEditor(){editor=null;const o=el('overlay');if(o)o.remove();render();}
-
 function renderEditor(){
-  const p=partyById(editor.pid);
-  let ov=el('overlay');
+  const p=partyById(editor.pid);let ov=el('overlay');
   if(!ov){ov=document.createElement('div');ov.id='overlay';ov.className='overlay';document.body.appendChild(ov);}
-  const name=p.players[editor.pi];
-  const r=PixiesScore.scoreManche(editor.cells,editor.manche);
+  const name=p.players[editor.pi];const r=PixiesScore.scoreManche(editor.cells,editor.manche);
   ov.innerHTML=`<div class="oinner">
-    <div class="obar">
-      <div class="t">${esc(name)} · Manche ${editor.manche}</div>
-      <button class="close" onclick="closeEditor()">Annuler</button>
-    </div>
-
-    <div class="ai-note">📷 <b>Photo (optionnel)</b> — prends l'aire de jeu de dessus pour pré-remplir la grille. La lecture IA fonctionne dans l'aperçu Claude ; sur GitHub Pages elle nécessite un petit proxy. La <b>saisie manuelle</b> ci-dessous marche partout et reste maîtresse.</div>
+    <div class="obar"><div class="t">${esc(name)} · Manche ${editor.manche}</div>
+      <button class="close" onclick="closeEditor()">Annuler</button></div>
+    <div class="note">📷 <b>Photo (option)</b> — vue de dessus pour pré-remplir. IA active dans l'aperçu Claude ; sur GitHub Pages elle demande un proxy. La saisie tactile ci-dessous marche partout.</div>
     <div class="photobar">
-      <label class="btn sm" style="flex:1">📷 Photo
-        <input type="file" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(event)"></label>
-      <button class="btn sm" style="flex:1" id="aibtn" onclick="aiRead()" ${editor.photo?'':'disabled style="opacity:.4;flex:1"'}>✨ Lire (IA)</button>
-    </div>
+      <label class="btn sm" style="flex:1">📷 Photo<input type="file" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(event)"></label>
+      <button class="btn sm" style="flex:1" id="aibtn" onclick="aiRead()" ${editor.photo?'':'disabled'}>✨ Lire (IA)</button></div>
     ${editor.photo?`<div class="photoprev"><img src="${editor.photo}"></div>`:''}
-
-    <div class="grid">
-      ${editor.cells.map((c,i)=>cellHTML(c,i)).join('')}
-    </div>
-
-    <div class="brk">
-      <div class="row"><span>Cartes validées</span><span>${r.validated}</span></div>
-      <div class="row"><span>Symboles (${r.spiralsBase} spirales ${r.special?'+ '+r.special+' spéciale ':''}− ${r.crosses} croix)</span><span>${r.symbols>=0?'+':''}${r.symbols}</span></div>
-      <div class="row"><span>Plus grande zone ${r.zoneColor?'('+COLOR_FR[r.zoneColor]+' ×'+PixiesScore.mult(editor.manche)+', '+r.zoneCards+' cartes)':'(aucune)'}</span><span>${r.zonePts}</span></div>
-      <div class="row tot"><span>Total manche ${editor.manche}</span><span>${r.total}</span></div>
-    </div>
-
+    <div class="grid">${editor.cells.map((c,i)=>cellHTML(c,i)).join('')}</div>
+    <div class="brk">${brkHTML(r)}</div>
     <button class="btn primary" style="margin-top:16px" onclick="saveEditor()">Enregistrer ${r.total} pts</button>
     <button class="btn ghost danger" style="margin-top:8px" onclick="resetEditor()">Réinitialiser la grille</button>
-    <div style="height:20px"></div>
-  </div>`;
-  if(sheet)renderSheet();
+    <div style="height:20px"></div></div>`;
+  if(sheet&&sheet.index!=null)renderSheet();
 }
-
+function brkHTML(r){return `
+  <div class="row"><span>Cartes validées</span><span>${r.validated}</span></div>
+  <div class="row"><span>Symboles (${r.spiralsBase} spirales${r.special?' + '+r.special+' spéciale':''} − ${r.crosses} croix)</span><span>${r.symbols>=0?'+':''}${r.symbols}</span></div>
+  <div class="row"><span>Plus grande zone ${r.zoneColor?'('+COLOR_FR[r.zoneColor]+' ×'+PixiesScore.mult(editor.manche)+', '+r.zoneCards+' cartes)':'(aucune)'}</span><span>${r.zonePts}</span></div>
+  <div class="row tot"><span>Total manche ${editor.manche}</span><span>${r.total}</span></div>`;}
 function cellHTML(c,i){
   if(c.state==='empty')return `<div class="gc empty-c" onclick="openCell(${i})"><span class="pos">${i+1}</span>vide</div>`;
   if(c.state==='down')return `<div class="gc down" onclick="openCell(${i})"><span class="pos">${i+1}</span>cachée</div>`;
   const bg=c.color==='multi'?'conic-gradient(#ef4444,#eab308,#22c55e,#3b82f6,#a855f7,#ef4444)':COLOR_HEX[c.color]||'#555';
-  const badges=[];
-  if(c.spirals)badges.push(`<span class="bb">↻${c.spirals}</span>`);
-  if(c.crosses)badges.push(`<span class="bb">✕${c.crosses}</span>`);
-  return `<div class="gc" style="background:${bg}" onclick="openCell(${i})">
-    <span class="pos">${i+1}</span>
+  const badges=[];if(c.spirals)badges.push(`<span class="bb">↻${c.spirals}</span>`);if(c.crosses)badges.push(`<span class="bb">✕${c.crosses}</span>`);
+  return `<div class="gc" style="background:${bg}" onclick="openCell(${i})"><span class="pos">${i+1}</span>
     ${badges.length?`<div class="badges">${badges.join('')}</div>`:''}
     ${c.validated&&c.number?`<span class="num">${c.number}</span>`:''}
     ${c.special?`<span class="spec" style="background:${c.special==='multi'?'#fff':COLOR_HEX[c.special]}"></span>`:''}
-    ${c.validated?`<span class="val"></span>`:''}
-  </div>`;
+    ${c.validated?`<span class="val"></span>`:''}</div>`;
 }
-
 function resetEditor(){if(confirm('Vider la grille ?')){editor.cells=emptyCells();renderEditor();}}
+function saveEditor(){const p=partyById(editor.pid);const r=PixiesScore.scoreManche(editor.cells,editor.manche);
+  p.scores[editor.pi][editor.manche-1]=r.total;p.boards[editor.pi+'_'+(editor.manche-1)]=editor.cells;
+  bumpPlay(p);save();closeEditor();}
 
-function saveEditor(){
-  const p=partyById(editor.pid);
-  const r=PixiesScore.scoreManche(editor.cells,editor.manche);
-  p.scores[editor.pi][editor.manche-1]=r.total;
-  p.boards[editor.pi+'_'+(editor.manche-1)]=editor.cells;
-  save();closeEditor();
-}
-
-/* ============ FICHE CELLULE ============ */
+/* ---- Fiche cellule ---- */
 function openCell(i){sheet={index:i};renderSheet();}
 function closeSheet(){sheet=null;const s=el('sheetbg');if(s)s.remove();}
 function updateCell(patch){const c=editor.cells[sheet.index];Object.assign(c,patch);renderSheet();
-  // maj visuelle grille + breakdown en direct (léger : re-render éditeur en gardant sheet)
-  const p=partyById(editor.pid);const r=PixiesScore.scoreManche(editor.cells,editor.manche);
+  const r=PixiesScore.scoreManche(editor.cells,editor.manche);
   const grid=document.querySelector('#overlay .grid');if(grid)grid.innerHTML=editor.cells.map((c,i)=>cellHTML(c,i)).join('');
-  const brk=document.querySelector('#overlay .brk');
-  if(brk)brk.innerHTML=`
-    <div class="row"><span>Cartes validées</span><span>${r.validated}</span></div>
-    <div class="row"><span>Symboles (${r.spiralsBase} spirales ${r.special?'+ '+r.special+' spéciale ':''}− ${r.crosses} croix)</span><span>${r.symbols>=0?'+':''}${r.symbols}</span></div>
-    <div class="row"><span>Plus grande zone ${r.zoneColor?'('+COLOR_FR[r.zoneColor]+' ×'+PixiesScore.mult(editor.manche)+', '+r.zoneCards+' cartes)':'(aucune)'}</span><span>${r.zonePts}</span></div>
-    <div class="row tot"><span>Total manche ${editor.manche}</span><span>${r.total}</span></div>`;
-}
-
+  const brk=document.querySelector('#overlay .brk');if(brk)brk.innerHTML=brkHTML(r);}
 function renderSheet(){
-  const c=editor.cells[sheet.index];
-  let sb=el('sheetbg');
+  const c=editor.cells[sheet.index];let sb=el('sheetbg');
   if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
-    sb.onclick=(e)=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
+    sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
   const up=c.state==='up';
   sb.innerHTML=`<div class="sheet">
     <h3>Emplacement ${sheet.index+1}</h3>
     <div class="seg">
       <button class="${c.state==='empty'?'on':''}" onclick="updateCell({state:'empty'})">Vide</button>
       <button class="${c.state==='down'?'on':''}" onclick="updateCell({state:'down'})">Face cachée</button>
-      <button class="${up?'on':''}" onclick="cellUp()">Face visible</button>
-    </div>
+      <button class="${up?'on':''}" onclick="cellUp()">Face visible</button></div>
     ${up?`
       <div class="lab">Couleur</div>
-      <div class="swatches">
-        ${COLOR_ORDER.map(col=>`<button class="sw ${col==='multi'?'multi':''} ${c.color===col?'on':''}"
-          style="${col==='multi'?'':'background:'+COLOR_HEX[col]}" onclick="updateCell({color:'${col}'})">${COLOR_FR[col]}</button>`).join('')}
-      </div>
-
+      <div class="swatches">${COLOR_ORDER.map(col=>`<button class="sw ${col==='multi'?'multi':''} ${c.color===col?'on':''}"
+        style="${col==='multi'?'':'background:'+COLOR_HEX[col]}" onclick="updateCell({color:'${col}'})">${COLOR_FR[col]}</button>`).join('')}</div>
       <div class="lab">Validée ? (recouvre une carte cachée → rapporte son chiffre)</div>
-      <div class="toggle" onclick="updateCell({validated:${!c.validated}})">
-        <span>Carte validée</span><div class="switch ${c.validated?'on':''}"></div></div>
-      ${c.validated?`<div class="lab">Chiffre de la carte</div>
-        <div class="numgrid">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="${c.number===n?'on':''}" onclick="updateCell({number:${n}})">${n}</button>`).join('')}</div>`:''}
-
-      <div class="lab">Spirales ↻ (+1 chacune)</div>
-      <div class="stepper">
-        <button onclick="step('spirals',-1)">−</button>
-        <div class="v">${c.spirals||0}</div>
-        <button onclick="step('spirals',1)">＋</button></div>
-
-      <div class="lab">Croix ✕ (−1 chacune)</div>
-      <div class="stepper">
-        <button onclick="step('crosses',-1)">−</button>
-        <div class="v">${c.crosses||0}</div>
-        <button onclick="step('crosses',1)">＋</button></div>
-
+      <div class="toggle" onclick="updateCell({validated:${!c.validated}})"><span>Carte validée</span><div class="switch ${c.validated?'on':''}"></div></div>
+      ${c.validated?`<div class="lab">Chiffre</div><div class="numgrid">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="${c.number===n?'on':''}" onclick="updateCell({number:${n}})">${n}</button>`).join('')}</div>`:''}
+      <div class="lab">Spirales ↻ (+1)</div>
+      <div class="stepper"><button onclick="step('spirals',-1)">−</button><div class="v">${c.spirals||0}</div><button onclick="step('spirals',1)">＋</button></div>
+      <div class="lab">Croix ✕ (−1)</div>
+      <div class="stepper"><button onclick="step('crosses',-1)">−</button><div class="v">${c.crosses||0}</div><button onclick="step('crosses',1)">＋</button></div>
       <div class="lab">Carte spéciale (+1 spirale par carte visible de cette couleur)</div>
-      <div class="swatches">
-        <button class="sw none ${!c.special?'on':''}" onclick="updateCell({special:null})">Aucune</button>
-        ${COLOR_ORDER.filter(x=>x!=='multi').map(col=>`<button class="sw ${c.special===col?'on':''}"
-          style="background:${COLOR_HEX[col]}" onclick="updateCell({special:'${col}'})">${COLOR_FR[col]}</button>`).join('')}
-      </div>
+      <div class="swatches"><button class="sw none ${!c.special?'on':''}" onclick="updateCell({special:null})">Aucune</button>
+        ${COLOR_ORDER.filter(x=>x!=='multi').map(col=>`<button class="sw ${c.special===col?'on':''}" style="background:${COLOR_HEX[col]}" onclick="updateCell({special:'${col}'})">${COLOR_FR[col]}</button>`).join('')}</div>
     `:''}
-    <button class="btn primary done" onclick="closeSheet()">OK</button>
-  </div>`;
+    <button class="btn primary done" onclick="closeSheet()">OK</button></div>`;
 }
-function cellUp(){const c=editor.cells[sheet.index];
-  updateCell({state:'up',color:c.color||'blue',spirals:c.spirals||0,crosses:c.crosses||0,
-    validated:c.validated||false,number:c.number||null,special:c.special||null});}
-function step(field,d){const c=editor.cells[sheet.index];
-  const v=Math.max(0,Math.min(6,(c[field]||0)+d));updateCell({[field]:v});}
+function cellUp(){const c=editor.cells[sheet.index];updateCell({state:'up',color:c.color||'blue',spirals:c.spirals||0,crosses:c.crosses||0,validated:c.validated||false,number:c.number||null,special:c.special||null});}
+function step(field,d){const c=editor.cells[sheet.index];updateCell({[field]:Math.max(0,Math.min(6,(c[field]||0)+d))});}
 
-/* ============ PHOTO + IA ============ */
-function onPhoto(e){
-  const f=e.target.files&&e.target.files[0];if(!f)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    // Réduction pour limiter le poids envoyé à l'IA
-    const img=new Image();
-    img.onload=()=>{
-      const max=1024;let{width:w,height:h}=img;
-      if(w>max||h>max){const s=max/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
-      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
-      editor.photo=cv.toDataURL('image/jpeg',0.8);
-      renderEditor();
-    };
-    img.src=reader.result;
-  };
-  reader.readAsDataURL(f);
-}
-
+/* ---- Photo + IA ---- */
+function onPhoto(e){const f=e.target.files&&e.target.files[0];if(!f)return;
+  const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{
+    const max=1024;let w=img.width,h=img.height;if(w>max||h>max){const s=max/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
+    editor.photo=cv.toDataURL('image/jpeg',0.8);renderEditor();};img.src=reader.result;};
+  reader.readAsDataURL(f);}
 async function aiRead(){
-  if(!editor.photo)return;
-  const btn=el('aibtn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span> Lecture…';}
+  if(!editor.photo)return;const btn=el('aibtn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span> Lecture…';}
   const b64=editor.photo.split(',')[1];
-  const prompt=`Tu analyses une photo de l'aire de jeu du jeu de société Pixies (grille 3x3 de cartes, emplacements numérotés 1 à 9 de gauche à droite puis de haut en bas).
-Pour CHAQUE emplacement, renvoie un objet décrivant la carte :
-- state : "empty" (vide), "down" (face cachée), ou "up" (face visible)
-- si "up" : color parmi ["blue","green","yellow","orange","red","purple","brown","multi"] (multi = carte multicolore) ; number = chiffre 1-9 visible sur la carte ; validated = true si la carte face visible en recouvre une face cachée qui dépasse en dessous, sinon false ; spirals = nombre de spirales ; crosses = nombre de croix ; special = couleur comptée par une carte spéciale (même liste) ou null.
-Réponds UNIQUEMENT avec un tableau JSON de 9 objets, sans texte ni balises Markdown.`;
+  const prompt=`Tu analyses une photo de l'aire de jeu du jeu Pixies (grille 3x3, emplacements 1 à 9 de gauche à droite puis de haut en bas). Pour CHAQUE emplacement renvoie un objet: state ("empty","down","up"); si "up": color parmi ["blue","green","yellow","orange","red","purple","brown","multi"], number 1-9, validated (true si la carte recouvre une carte cachée qui dépasse), spirals (nombre), crosses (nombre), special (couleur comptée ou null). Réponds UNIQUEMENT par un tableau JSON de 9 objets, sans texte ni Markdown.`;
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
-          {type:'text',text:prompt}]}]})});
+    const endpoint=db.settings.aiProxy||'https://api.anthropic.com/v1/messages';
+    const resp=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const data=await resp.json();
     const txt=(data.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n');
-    const clean=txt.replace(/```json|```/g,'').trim();
-    const arr=JSON.parse(clean);
+    const arr=JSON.parse(txt.replace(/```json|```/g,'').trim());
     if(!Array.isArray(arr)||arr.length!==9)throw new Error('format inattendu');
-    editor.cells=arr.map(o=>{
-      if(!o||o.state==='empty')return {state:'empty'};
-      if(o.state==='down')return {state:'down'};
-      const col=COLOR_ORDER.includes(o.color)?o.color:'blue';
-      const sp=COLOR_ORDER.includes(o.special)&&o.special!=='multi'?o.special:null;
-      return {state:'up',color:col,validated:!!o.validated,
-        number:o.number?Math.max(1,Math.min(9,o.number)):null,
-        spirals:o.spirals?Math.max(0,Math.min(6,o.spirals)):0,
-        crosses:o.crosses?Math.max(0,Math.min(6,o.crosses)):0,special:sp};
-    });
-    renderEditor();
-    alert('Grille pré-remplie par l\'IA. Vérifie chaque carte (surtout les cartes validées) puis ajuste si besoin.');
-  }catch(err){
-    renderEditor();
-    alert('Lecture IA indisponible ici ('+err.message+').\n\nElle fonctionne dans l\'aperçu Claude. Sur GitHub Pages, il faut un petit proxy qui détient la clé API. La saisie manuelle reste disponible.');
-  }
+    editor.cells=arr.map(o=>{if(!o||o.state==='empty')return{state:'empty'};if(o.state==='down')return{state:'down'};
+      const col=COLOR_ORDER.includes(o.color)?o.color:'blue';const sp=(COLOR_ORDER.includes(o.special)&&o.special!=='multi')?o.special:null;
+      return{state:'up',color:col,validated:!!o.validated,number:o.number?Math.max(1,Math.min(9,o.number)):null,
+        spirals:o.spirals?Math.max(0,Math.min(6,o.spirals)):0,crosses:o.crosses?Math.max(0,Math.min(6,o.crosses)):0,special:sp};});
+    renderEditor();alert('Grille pré-remplie par l\'IA. Vérifie chaque carte (surtout les validées) puis ajuste.');
+  }catch(err){renderEditor();
+    const hasProxy=!!db.settings.aiProxy;
+    alert('Lecture IA indisponible ('+err.message+').\n\n'+(hasProxy?
+      'Vérifie l\'URL du proxy IA dans Réglages et la clé côté worker.':
+      'Elle fonctionne dans l\'aperçu Claude. Sur GitHub Pages, renseigne l\'URL du proxy IA dans Réglages.')+' La saisie manuelle reste dispo.');}
 }
 
-/* ============ GO ============ */
+/* ================= ONGLET LUDOTHÈQUE ================= */
+function newGameObj(name){return{id:uid(),name:name||'',bggId:null,thumb:null,minP:null,maxP:null,
+  minTime:null,maxTime:null,status:'envie',rating:null,tags:[],notes:'',timesPlayed:0,lastPlayed:null,created:Date.now()};}
+function renderLudo(){
+  let games=[...db.games];
+  const q=ludoFilter.q.trim().toLowerCase();
+  if(q)games=games.filter(g=>g.name.toLowerCase().includes(q)||(g.tags||[]).some(t=>t.toLowerCase().includes(q)));
+  if(ludoFilter.status!=='tous')games=games.filter(g=>g.status===ludoFilter.status);
+  games.sort((a,b)=>a.name.localeCompare(b.name));
+  const counts={tous:db.games.length,envie:0,possede:0,joue:0};db.games.forEach(g=>counts[g.status]++);
+  el('app').innerHTML=`
+    <div class="top"><div class="iconbtn">📚</div>
+      <div class="brand"><h1>Ludothèque</h1><span class="sub">${db.games.length} jeux suivis</span></div></div>
+    <button class="btn primary" onclick="editGame()">＋ Ajouter un jeu</button>
+    <div class="filters">
+      <input class="search" placeholder="Rechercher un jeu, un tag…" value="${esc(ludoFilter.q)}" oninput="__ludoQ(this.value)">
+      <div class="segrow">
+        ${[['tous','Tous'],['envie','Envie'],['possede','Possédé'],['joue','Joué']].map(([k,l])=>
+          `<button class="${ludoFilter.status===k?'on':''}" onclick="__ludoS('${k}')">${l} ${counts[k]?`· ${counts[k]}`:''}</button>`).join('')}
+      </div>
+    </div>
+    <div class="list">
+      ${games.length?games.map(g=>{
+        const players=(g.minP||g.maxP)?`${g.minP||'?'}–${g.maxP||'?'} j.`:'';
+        const time=(g.minTime||g.maxTime)?`${g.minTime||g.maxTime} min`:'';
+        const meta=[players,time,g.timesPlayed?`joué ${g.timesPlayed}×`:''].filter(Boolean).join(' · ');
+        return `<div class="tile" onclick="editGame('${g.id}')">
+          ${g.thumb?`<img class="thumb" src="${esc(g.thumb)}">`:`<div class="thumb ph">🎲</div>`}
+          <div class="grow"><div class="t">${esc(g.name)}${g.rating!=null?` · ⭐️${g.rating}`:''}</div>
+            <div class="m">${esc(meta||'—')}</div></div>
+          <span class="statuschip st-${g.status}">${STATUS_FR[g.status]}</span><div class="chev">›</div></div>`;
+      }).join(''):`<div class="empty">${db.games.length?'Aucun jeu ne correspond au filtre.':'Ta ludothèque est vide.<br>Ajoute tes jeux, tes envies, ceux que tu as testés.'}</div>`}
+    </div>`;
+}
+function __ludoQ(v){ludoFilter.q=v;const list=document.querySelector('#app .list');renderLudo();const s=el('app').querySelector('.search');if(s){s.focus();s.setSelectionRange(v.length,v.length);}}
+function __ludoS(s){ludoFilter.status=s;renderLudo();}
+
+/* ---- Fiche jeu (ajout / édition) ---- */
+function editGame(id){
+  const g=id?JSON.parse(JSON.stringify(gameById(id))):newGameObj('');
+  const isNew=!id;
+  const draw=()=>{
+    el('app').innerHTML=`
+      <div class="top"><button class="iconbtn" onclick="goTab('ludo')">‹</button>
+        <div class="brand"><h1>${isNew?'Ajouter un jeu':'Modifier'}</h1><span class="sub">Ludothèque</span></div>
+        ${!isNew?`<button class="iconbtn" style="color:var(--danger)" onclick="__delGame('${g.id}')">🗑</button>`:''}</div>
+      <button class="btn ghost sm" style="width:100%;margin-bottom:10px" onclick="__bggSearch()">🔎 Chercher sur BoardGameGeek</button>
+      ${g.thumb?`<div class="photoprev"><img src="${esc(g.thumb)}" style="max-height:150px"></div>`:''}
+      <div class="field"><label>Nom</label><input class="inp" id="g_name" value="${esc(g.name)}" placeholder="Ex. Wingspan"></div>
+      <div class="field"><label>Statut</label>
+        <div class="seg">${['envie','possede','joue'].map(s=>`<button class="${g.status===s?'on':''}" onclick="__gset('status','${s}')">${STATUS_FR[s]}</button>`).join('')}</div></div>
+      <div class="two">
+        <div class="field"><label>Joueurs min</label><input class="inp" id="g_minP" type="number" inputmode="numeric" value="${g.minP??''}"></div>
+        <div class="field"><label>Joueurs max</label><input class="inp" id="g_maxP" type="number" inputmode="numeric" value="${g.maxP??''}"></div></div>
+      <div class="field"><label>Durée (min)</label><input class="inp" id="g_time" type="number" inputmode="numeric" value="${g.minTime??''}"></div>
+      <div class="field"><label>Note ${g.rating!=null?'· '+g.rating+'/10':''}</label>
+        <div class="rate">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="${g.rating===n?'on':''}" onclick="__gset('rating',${g.rating===n?null:n})">${n}</button>`).join('')}</div></div>
+      <div class="field"><label>Tags (séparés par des virgules)</label><input class="inp" id="g_tags" value="${esc((g.tags||[]).join(', '))}" placeholder="familial, stratégie, 30 min"></div>
+      <div class="field"><label>Notes</label><textarea class="inp" id="g_notes" placeholder="Remarques, variantes, avec qui…">${esc(g.notes||'')}</textarea></div>
+      ${g.timesPlayed?`<div class="note">Joué ${g.timesPlayed} fois${g.lastPlayed?' · dernière : '+fmtDate(g.lastPlayed):''}.</div>`:''}
+      <button class="btn primary" style="margin-top:8px" onclick="__saveGame('${g.id}',${isNew})">Enregistrer</button>`;
+  };
+  window.__gset=(k,v)=>{g[k]=v;draw();};
+  window.__delGame=gid=>{if(!confirm('Supprimer ce jeu de la ludothèque ?'))return;db.games=db.games.filter(x=>x.id!==gid);save();goTab('ludo');};
+  window.__saveGame=(gid,isN)=>{
+    g.name=el('g_name').value.trim();if(!g.name)return alert('Donne un nom au jeu.');
+    const gi=v=>{const n=parseInt(v,10);return isNaN(n)?null:n;};
+    g.minP=gi(el('g_minP').value);g.maxP=gi(el('g_maxP').value);g.minTime=gi(el('g_time').value);g.maxTime=g.minTime;
+    g.tags=el('g_tags').value.split(',').map(t=>t.trim()).filter(Boolean);g.notes=el('g_notes').value.trim();
+    if(isN)db.games.push(g);else{const idx=db.games.findIndex(x=>x.id===gid);db.games[idx]=g;}
+    save();goTab('ludo');};
+  window.__bggSearch=async()=>{
+    const term=(el('g_name').value||'').trim();if(!term)return alert('Tape d\'abord un nom à chercher.');
+    const proxy=db.settings.proxy;
+    try{
+      if(proxy){
+        // Flux complet via proxy (API XML stable : nom, vignette, joueurs, durée)
+        const sx=await bggFetch('https://boardgamegeek.com/xmlapi2/search?type=boardgame&query='+encodeURIComponent(term));
+        const items=[...sx.querySelectorAll('item')].slice(0,8);
+        if(!items.length)return alert('Aucun résultat BGG.');
+        const pick=prompt('Résultats BGG :\n'+items.map((it,i)=>`${i+1}. ${it.querySelector('name').getAttribute('value')} (${(it.querySelector('yearpublished')||{getAttribute:()=>'?'}).getAttribute('value')})`).join('\n')+'\n\nNuméro à importer :');
+        const n=parseInt(pick,10);if(!n||n<1||n>items.length)return;
+        const bggId=items[n-1].getAttribute('id');
+        const tx=await bggFetch('https://boardgamegeek.com/xmlapi2/thing?stats=1&id='+bggId);
+        const it=tx.querySelector('item');const val=q=>{const e=it.querySelector(q);return e?e.getAttribute('value'):null;};
+        g.name=it.querySelector('name[type="primary"]').getAttribute('value');g.bggId=bggId;
+        g.thumb=(it.querySelector('thumbnail')||{textContent:null}).textContent;
+        g.minP=parseInt(val('minplayers'))||g.minP;g.maxP=parseInt(val('maxplayers'))||g.maxP;
+        g.minTime=parseInt(val('playingtime'))||g.minTime;g.maxTime=g.minTime;draw();
+      }else{
+        // Flux direct JSON, sans proxy — le test « comme Suivi »
+        const r=await fetch('https://boardgamegeek.com/search/boardgame?q='+encodeURIComponent(term)+'&showcount=10',{headers:{'Accept':'application/json'}});
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        const data=await r.json();
+        const items=(data.items||[]).slice(0,10);
+        if(!items.length)return alert('Aucun résultat BGG.');
+        const pick=prompt('Résultats BGG (API JSON directe) :\n'+items.map((it,i)=>`${i+1}. ${it.name} (${it.yearpublished||'?'})`).join('\n')+'\n\nNuméro à importer :');
+        const n=parseInt(pick,10);if(!n||n<1||n>items.length)return;
+        const it=items[n-1];g.name=it.name;g.bggId=String(it.objectid);draw();
+        alert('Importé (nom + réf BGG) via l\'API JSON directe — donc CORS OK chez toi. Joueurs/durée/vignette : à compléter à la main, ou configure le proxy pour l\'import complet.');
+      }
+    }catch(err){
+      const cors=/Failed to fetch|NetworkError|Load failed|CORS/i.test(err.message||'');
+      alert('Recherche BGG échouée'+(err.message?' ('+err.message+')':'')+'.\n\n'+
+        (proxy?'Vérifie l\'URL du proxy dans Réglages.':
+        (cors?'L\'appel direct a été bloqué (CORS) : BGG ne l\'autorise pas depuis ce domaine. Passe par le proxy (Réglages) ou saisis à la main.':
+        'Saisis à la main, ou configure le proxy dans Réglages.')));
+    }
+  };
+  draw();
+}
+async function bggFetch(url){
+  const proxy=db.settings.proxy;if(!proxy)throw new Error('proxy non configuré');
+  const resp=await fetch(proxy+encodeURIComponent(url));if(!resp.ok)throw new Error('HTTP '+resp.status);
+  const text=await resp.text();return new DOMParser().parseFromString(text,'application/xml');
+}
+
+/* ================= ONGLET RÉGLAGES ================= */
+function renderReglages(){
+  el('app').innerHTML=`
+    <div class="top"><div class="iconbtn">⚙︎</div>
+      <div class="brand"><h1>Réglages</h1><span class="sub">Sauvegarde & options</span></div></div>
+    <div class="lab">Sauvegarde</div>
+    <button class="btn" onclick="exportData()">⬇︎ Exporter les données (JSON)</button>
+    <label class="btn ghost" style="margin-top:8px">⬆︎ Importer un fichier<input type="file" accept="application/json" style="display:none" onchange="importData(event)"></label>
+    <div class="note" style="margin-top:8px">Sauvegarde tout (parties + ludothèque). Pratique pour transférer entre appareils ou déposer sur iCloud Drive.</div>
+
+    <div class="lab">Proxy Cloudflare Worker (option)</div>
+    <div class="field"><label>Relais BGG (import de jeux)</label>
+      <input class="inp" id="proxyin" placeholder="https://ton-worker.workers.dev/?url=" value="${esc(db.settings.proxy||'')}"></div>
+    <div class="field"><label>Relais IA (lecture photo)</label>
+      <input class="inp" id="aiproxyin" placeholder="https://ton-worker.workers.dev/ai" value="${esc(db.settings.aiProxy||'')}"></div>
+    <button class="btn ghost sm" style="width:100%" onclick="saveProxy()">Enregistrer les proxys</button>
+    <div class="note" style="margin-top:8px">Sans proxy, la recherche BGG tente l'<b>API JSON directe</b> depuis ton navigateur (comme TMDB dans Suivi) : ça marche seulement si BGG autorise le CORS pour ton domaine, et cette API interne peut casser sans préavis. Avec un proxy, l'import passe par l'API XML stable (nom, vignette, joueurs, durée) et la lecture photo par <b>/ai</b>. La ludothèque reste utilisable 100 % à la main dans tous les cas.</div>
+
+    <div class="lab">Zone de danger</div>
+    <button class="btn danger" onclick="wipeAll()">Tout effacer</button>
+    <div class="footer">Comptoir · fichier HTML unique, hors-ligne, localStorage.<br>Pixies © Bombyx — cette app est un compteur non-officiel.</div>`;
+}
+function saveProxy(){db.settings.proxy=el('proxyin').value.trim();db.settings.aiProxy=el('aiproxyin').value.trim();save();alert('Proxys enregistrés.');}
+function exportData(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='comptoir-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importData(e){const f=e.target.files&&e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
+    if(!d.parties||!d.games)throw new Error('fichier non reconnu');
+    if(!confirm('Remplacer toutes les données actuelles par ce fichier ?'))return;
+    db=d;db.settings=db.settings||{proxy:''};save();goTab('parties');
+  }catch(err){alert('Import impossible : '+err.message);}};r.readAsText(f);}
+function wipeAll(){if(!confirm('Effacer TOUTES les parties et la ludothèque ? Irréversible.'))return;
+  db={parties:[],games:[],settings:{proxy:''}};save();goTab('parties');}
+
+/* ================= GO ================= */
 render();
 </script>
 </body>
