@@ -158,6 +158,9 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .valgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-width:260px}
 .valgrid button{aspect-ratio:1;border-radius:10px;background:var(--card);font-weight:700;font-size:18px}
 .valgrid button.on{background:var(--accent);color:#062018}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{min-width:44px;height:46px;padding:0 8px;border-radius:11px;background:var(--card);font-weight:700;font-size:17px;color:var(--txt);display:flex;align-items:center;justify-content:center}
+.chip.on{background:var(--accent);color:#062018}
 .numgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
 .numgrid button{aspect-ratio:1;border-radius:10px;background:var(--card);font-weight:700;font-size:16px}
 .numgrid button.on{background:var(--accent);color:#062018}
@@ -215,6 +218,26 @@ function pixiesTotal(c,manche){
   const bonus=+c.bonus||0, sp=+c.spirals||0, cr=+c.crosses||0, zone=+c.zone||0;
   return validatedSum(c)+bonus+sp-cr+zone*pixiesMult(manche);
 }
+
+/* Skull King — décompte par manche (10 manches, manche N = N cartes).
+   Pari réussi (plis = pari) : +20 par pli parié. Pari raté : −10 par pli d'écart.
+   Pari 0 réussi : +10 × n° de manche. Pari 0 raté : −10 × n° de manche.
+   Les points bonus ne comptent QUE si le pari est réussi. */
+function skullRound(c,round){
+  const bid=+c.bid||0, tricks=+c.tricks||0, bonus=+c.bonus||0;
+  let base, made;
+  if(bid===0){made=(tricks===0);base=(made?1:-1)*10*round;}
+  else{made=(tricks===bid);base=made?20*bid:-10*Math.abs(tricks-bid);}
+  const bonusApplied=made?bonus:0;
+  return {base, made, bonusApplied, total:base+bonusApplied};
+}
+
+/* Type de décompte selon le nom du jeu */
+function autoType(name){const n=(name||'').toLowerCase();
+  if(n==='pixies')return 'pixies';
+  if(n==='skull king'||n==='skullking')return 'skullking';
+  return 'manual';}
+function autoRounds(type){return type==='pixies'?3:(type==='skullking'?10:1);}
 
 /* ================= CONSTANTES ================= */
 const COLOR_HEX={blue:'#3b82f6',green:'#22c55e',yellow:'#eab308',orange:'#f97316',red:'#ef4444',purple:'#a855f7',brown:'#a16207'};
@@ -285,7 +308,7 @@ function renderParties(){
           <div class="badge">${done?'🏆 '+esc(lead.n):lead.t+' pts'}</div><div class="chev">›</div></div>`;
       }).join(''):`<div class="empty">Aucune partie.<br>Lance une nouvelle partie pour compter les points.</div>`}
     </div>
-    <div class="footer">Pixies : décompte par manche (validées, bonus, spirales, croix, zone).<br>Autres jeux : saisie manuelle des scores par tour.</div>`;
+    <div class="footer">Pixies & Skull King : décompte automatique par manche.<br>Autres jeux : saisie manuelle des scores par tour.</div>`;
 }
 
 function renderParty(){
@@ -296,7 +319,7 @@ function renderParty(){
   const lab=p.type==='pixies'?(i=>'M'+(i+1)):(i=>'R'+(i+1));
   el('app').innerHTML=`
     <div class="top"><button class="iconbtn" onclick="goTab('parties')">‹</button>
-      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${p.players.length} joueurs · ${p.rounds} ${p.type==='pixies'?'manches':'tours'}</span></div>
+      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${p.players.length} joueurs · ${p.rounds} ${p.type==='manual'?'tours':'manches'}</span></div>
       <button class="iconbtn" onclick="deleteParty('${p.id}')" style="color:var(--danger)">🗑</button></div>
     <div class="tablewrap"><table>
       <thead><tr><th>Joueur</th>${cols.map(i=>`<th>${lab(i)}</th>`).join('')}<th>Total</th></tr></thead>
@@ -306,7 +329,7 @@ function renderParty(){
             return `<td class="mcell ${v==null?'empty-c':''}" onclick="openScore('${p.id}',${pi},${m})">${v==null?'＋':v}</td>`;}).join('')}
           <td class="total">${tot[pi]}</td></tr>`).join('')}</tbody>
     </table></div>
-    <div class="tapnote">Touche une case pour ${p.type==='pixies'?'saisir le décompte de la manche':'saisir le score'} d'un joueur.</div>
+    <div class="tapnote">Touche une case pour ${p.type==='manual'?'saisir le score':'saisir le décompte de la manche'} d'un joueur.</div>
     ${done?`<div class="brk" style="margin-top:14px"><div class="row tot"><span>Vainqueur</span><span>${esc(p.players[tot.indexOf(max)])} 🏆</span></div></div>`:''}`;
 }
 
@@ -326,12 +349,14 @@ function newParty(){
         <select class="inp" onchange="__pickGame(this.value)">
           <option value="">— Saisir un nom —</option>
           <option value="__pixies" ${state.name==='Pixies'&&!state.gameId?'selected':''}>Pixies (décompte auto)</option>
-          ${games.map(g=>`<option value="${g.id}" ${state.gameId===g.id?'selected':''}>${esc(g.name)}${g.name==='Pixies'?' (décompte auto)':''}</option>`).join('')}
+          <option value="__skullking" ${state.name==='Skull King'&&!state.gameId?'selected':''}>Skull King (décompte auto)</option>
+          ${games.map(g=>`<option value="${g.id}" ${state.gameId===g.id?'selected':''}>${esc(g.name)}${autoType(g.name)!=='manual'?' (décompte auto)':''}</option>`).join('')}
         </select></div>
-      ${(!state.gameId&&state.name!=='Pixies')?`<div class="field"><input class="inp" placeholder="Nom du jeu" value="${esc(state.name)}" oninput="__setName(this.value)"></div>`:''}
+      ${(!state.gameId&&state.type==='manual')?`<div class="field"><input class="inp" placeholder="Nom du jeu" value="${esc(state.name)}" oninput="__setName(this.value)"></div>`:''}
       ${state.type==='manual'?`<div class="field"><label>Nombre de tours</label>
         <div class="stepper"><button onclick="__rounds(-1)">−</button><div class="v">${state.rounds}</div><button onclick="__rounds(1)">＋</button></div></div>`:
-        `<div class="note">🎯 <b>Pixies</b> : 3 manches. Par manche — coche les cartes validées, puis points bonus, spirales, croix, taille de zone (×2/×3/×4).</div>`}
+        state.type==='pixies'?`<div class="note">🎯 <b>Pixies</b> : 3 manches. Par manche — coche les cartes validées, puis points bonus, spirales, croix, taille de zone (×2/×3/×4).</div>`:
+        `<div class="note">🏴‍☠️ <b>Skull King</b> : 10 manches. Par manche — pari, plis remportés et points bonus (les bonus ne comptent que si le pari est réussi).</div>`}
       <div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
       <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
       <button class="btn primary" style="margin-top:18px" onclick="__start()">Démarrer</button>`;
@@ -341,8 +366,10 @@ function newParty(){
   };
   window.__pickGame=v=>{
     if(v==='__pixies'){state.gameId='';state.name='Pixies';state.type='pixies';state.rounds=3;}
+    else if(v==='__skullking'){state.gameId='';state.name='Skull King';state.type='skullking';state.rounds=10;}
     else if(v===''){state.gameId='';state.name='';state.type='manual';}
-    else{const g=gameById(v);state.gameId=v;state.name=g.name;state.type=(g.name==='Pixies')?'pixies':'manual';if(state.type==='pixies')state.rounds=3;}
+    else{const g=gameById(v);state.gameId=v;state.name=g.name;state.type=autoType(g.name);
+      if(state.type!=='manual')state.rounds=autoRounds(state.type);}
     draw();
   };
   window.__setName=v=>{state.name=v;};
@@ -360,7 +387,7 @@ function newParty(){
     if(!gameId){const existing=db.games.find(g=>g.name.toLowerCase()===name.toLowerCase());
       if(existing)gameId=existing.id;
       else{const g=newGameObj(name);g.status='joue';db.games.push(g);gameId=g.id;}}
-    const rounds=state.type==='pixies'?3:state.rounds;
+    const rounds=state.type!=='manual'?autoRounds(state.type):state.rounds;
     const p={id:uid(),gameId,game:name,type:state.type,rounds,created:Date.now(),
       players:clean,scores:clean.map(()=>Array(rounds).fill(null)),boards:{}};
     db.parties.push(p);save();openParty(p.id);
@@ -368,10 +395,11 @@ function newParty(){
   draw();
 }
 
-/* ---- Saisie score : fiche Pixies simplifiée OU manuel ---- */
+/* ---- Saisie score : fiche Pixies / Skull King / manuel ---- */
 function openScore(pid,pi,m){
   const p=partyById(pid);
   if(p.type==='pixies')return openPixiesSheet(pid,pi,m+1);
+  if(p.type==='skullking')return openSkullSheet(pid,pi,m+1);
   // sheet manuel
   sheet={manual:{pid,pi,m}};renderManualSheet();
 }
@@ -455,6 +483,67 @@ function savePixies(){const {pid,pi,manche,c}=sheet.pixies;const p=partyById(pid
   bumpPlay(p);save();closeSheet();render();}
 function clearPixies(){const {pid,pi,manche}=sheet.pixies;const p=partyById(pid);
   p.scores[pi][manche-1]=null;delete p.boards[pi+'_'+(manche-1)];save();closeSheet();render();}
+
+/* ================= FICHE SKULL KING (par manche) ================= */
+function openSkullSheet(pid,pi,round){
+  const p=partyById(pid);const key=pi+'_'+(round-1);
+  const saved=(p.boards[key]&&!Array.isArray(p.boards[key]))?p.boards[key]:null;
+  const c=Object.assign({bid:0,tricks:0,bonus:0},saved||{});
+  sheet={skull:{pid,pi,round,c}};
+  renderSkullSheet();
+}
+function renderSkullSheet(){
+  const {pid,pi,round,c}=sheet.skull;const p=partyById(pid);
+  let sb=el('sheetbg');
+  if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
+    sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
+  const stepper=(field,label,hint)=>`
+    <div class="lab">${label}</div>
+    <div class="stepper"><button type="button" onclick="skStep('${field}',-1)">−</button>
+      <input class="stepin" id="sk_${field}" type="number" inputmode="numeric" min="0" value="${+c[field]||0}" oninput="skInput('${field}',this.value)">
+      <button type="button" onclick="skStep('${field}',1)">＋</button></div>
+    ${hint?`<div class="hint">${hint}</div>`:''}`;
+  const chips=(field,label)=>`
+    <div class="lab">${label} : <span id="sk_${field}_v">${+c[field]||0}</span></div>
+    <div class="chips">${Array.from({length:round+1},(_,n)=>`<button type="button" class="chip ${(+c[field]||0)===n?'on':''}" data-sk="${field}" data-n="${n}" onclick="skPick('${field}',${n})">${n}</button>`).join('')}</div>`;
+  sb.innerHTML=`<div class="sheet">
+    <h3>${esc(p.players[pi])} · Manche ${round} <span style="color:var(--dim);font-weight:500">(${round} carte${round>1?'s':''})</span></h3>
+    ${chips('bid','Pari (plis annoncés)')}
+    ${chips('tricks','Plis remportés')}
+    ${stepper('bonus','Points bonus','14 capturés, sirène/Skull King, pirates… Comptés seulement si le pari est réussi.')}
+    <div class="brk" style="margin-top:14px">
+      <div class="row"><span id="sk_baselab">Pari</span><span id="sk_base">0</span></div>
+      <div class="row"><span id="sk_bonuslab">Bonus</span><span id="sk_bonusval">0</span></div>
+      <div class="row tot"><span>Total manche ${round}</span><span id="sk_tot">0</span></div></div>
+    <button class="btn primary done" type="button" id="sk_savebtn" onclick="saveSkull()">Enregistrer</button>
+    ${p.scores[pi][round-1]!=null?`<button class="btn ghost danger" type="button" style="margin-top:8px" onclick="clearSkull()">Effacer cette manche</button>`:''}</div>`;
+  skRefresh();
+}
+function skPick(field,n){const {c}=sheet.skull;c[field]=n;
+  document.querySelectorAll('[data-sk="'+field+'"]').forEach(b=>b.classList.toggle('on',(+b.dataset.n)===n));
+  skRefresh();}
+function skRefresh(){
+  const {round,c}=sheet.skull;const r=skullRound(c,round);
+  const set=(id,v)=>{const e=el(id);if(e)e.textContent=v;};
+  const bid=+c.bid||0;
+  set('sk_bid_v',bid);set('sk_tricks_v',+c.tricks||0);
+  let baselab;
+  if(bid===0)baselab=r.made?('Pari 0 réussi (10 × '+round+')'):('Pari 0 raté (−10 × '+round+')');
+  else baselab=r.made?('Pari réussi (20 × '+bid+')'):('Pari raté (−10 × écart)');
+  set('sk_baselab',baselab);set('sk_base',(r.base>0?'+':'')+r.base);
+  set('sk_bonuslab',r.made?'Bonus':'Bonus (pari raté → 0)');
+  set('sk_bonusval',r.bonusApplied);
+  set('sk_tot',r.total);set('sk_savebtn','Enregistrer '+r.total+' pts');
+}
+function skStep(f,d){const {round,c}=sheet.skull;const max=(f==='bonus')?9999:round;
+  c[f]=Math.max(0,Math.min(max,(+c[f]||0)+d));const i=el('sk_'+f);if(i)i.value=c[f];skRefresh();}
+function skInput(f,v){const {round,c}=sheet.skull;const n=parseInt(v,10);const max=(f==='bonus')?9999:round;
+  c[f]=(v===''||isNaN(n))?0:Math.max(0,Math.min(max,n));skRefresh();}
+function saveSkull(){const {pid,pi,round,c}=sheet.skull;const p=partyById(pid);
+  p.scores[pi][round-1]=skullRound(c,round).total;p.boards[pi+'_'+(round-1)]=c;
+  bumpPlay(p);save();closeSheet();render();}
+function clearSkull(){const {pid,pi,round}=sheet.skull;const p=partyById(pid);
+  p.scores[pi][round-1]=null;delete p.boards[pi+'_'+(round-1)];save();closeSheet();render();}
 
 /* ================= ONGLET LUDOTHÈQUE ================= */
 function newGameObj(name){return{id:uid(),name:name||'',bggId:null,thumb:null,minP:null,maxP:null,
