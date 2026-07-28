@@ -161,6 +161,46 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chip{min-width:44px;height:46px;padding:0 8px;border-radius:11px;background:var(--card);font-weight:700;font-size:17px;color:var(--txt);display:flex;align-items:center;justify-content:center}
 .chip.on{background:var(--accent);color:#062018}
+.chip.mini{min-width:34px;height:36px;font-size:14px;border-radius:9px;padding:0 4px}
+/* Vue manche-par-manche Skull King */
+.skband{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch}
+.skbtn{flex:none;width:42px;height:42px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--dim);font-weight:800;font-size:16px;position:relative}
+.skbtn.done{color:var(--txt);border-color:var(--accent)}
+.skbtn.cur{background:var(--accent);color:#062018;border-color:transparent}
+.sklegend{font-size:11px;color:var(--dim2);line-height:1.5;margin:0 0 12px}
+.skcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:9px}
+.skhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.skname{font-weight:700;font-size:15px}
+.sktot{font-size:12px;color:var(--dim);font-weight:700;flex:none}
+.skrow{display:flex;align-items:flex-start;gap:9px;margin-bottom:8px}
+.skrow:last-child{margin-bottom:0;align-items:center}
+.skmini-lab{font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;width:42px;flex:none;padding-top:9px}
+.skrow:last-child .skmini-lab{padding-top:0}
+.skrow .chips{flex:1}
+.stepper.compact{padding:4px 8px;gap:6px;max-width:140px}
+.stepper.compact button{width:32px;height:32px;font-size:19px;border-radius:8px}
+.stepper.compact .v{font-size:16px;min-width:34px}
+.skscore{margin-left:auto;font-weight:800;font-size:17px;color:var(--accent);min-width:44px;text-align:right;flex:none}
+.gamepick{display:flex;flex-direction:column;gap:8px}
+.gtile{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--txt);text-align:left}
+.gtile .gthumb{width:48px;height:48px;border-radius:10px;object-fit:cover;background:var(--card2);flex:none}
+.gtile .gthumb.ph{display:flex;align-items:center;justify-content:center;font-size:23px;color:var(--dim)}
+.gtile .gname{font-weight:650;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.gtile.on{background:var(--accent);color:#062018;border-color:transparent}
+.gtile.on .gname{color:#062018}
+.gtile.on .gthumb.ph{color:rgba(6,32,24,.6)}
+.gtile.other .gname{color:var(--dim);font-weight:600}
+.gtile.other.on .gname{color:#062018}
+.gtile:active{transform:scale(.995)}
+.gtile .gchange{margin-left:auto;font-size:11px;font-weight:800;color:#062018;background:rgba(6,32,24,.14);padding:4px 10px;border-radius:20px;flex:none}
+.bonusref{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:2px 12px;margin-top:2px}
+.bonusref .brow{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:none;border:none;text-align:left;font-size:13px;color:var(--txt);padding:11px 0;border-bottom:1px solid var(--line)}
+.bonusref .brow span:last-child{color:var(--accent);font-weight:800;flex:none;font-size:14px}
+.bonusref .brow:active{opacity:.55}
+.bonusref .brnote{font-size:11.5px;color:var(--dim2);padding:8px 0 6px}
+.bl{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--dim);padding:7px 0;align-items:center}
+.bl+.bl{border-top:1px solid var(--line)}
+.bl b{color:var(--accent);font-weight:800;flex:none;font-variant-numeric:tabular-nums}
 .numgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
 .numgrid button{aspect-ratio:1;border-radius:10px;background:var(--card);font-weight:700;font-size:16px}
 .numgrid button.on{background:var(--accent);color:#062018}
@@ -244,6 +284,13 @@ const COLOR_HEX={blue:'#3b82f6',green:'#22c55e',yellow:'#eab308',orange:'#f97316
 const COLOR_FR={blue:'Bleu',green:'Vert',yellow:'Jaune',orange:'Orange',red:'Rouge',purple:'Violet',brown:'Marron',multi:'Multi'};
 const COLOR_ORDER=['blue','green','yellow','orange','red','purple','brown','multi'];
 const STATUS_FR={envie:'Envie',possede:'Possédé',joue:'Joué'};
+const SK_BONUSES=[
+  {l:'14 coloré (vert / jaune / violet)',v:10},
+  {l:'14 noir (Jolly Roger)',v:20},
+  {l:'Sirène capturée par un pirate',v:20},
+  {l:'Skull King capturé par une sirène',v:40},
+  {l:'Pirate capturé par le Skull King',v:30}
+];
 const STORE='comptoirScore_v1';
 
 /* ================= DONNÉES ================= */
@@ -262,6 +309,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 let route={tab:'parties'};       // tab: parties|ludo|reglages ; + view: party
 let editor=null;                 // éditeur Pixies
 let sheet=null;                  // fiche cellule
+let skState=null;                // vue manche-par-manche Skull King
 let ludoFilter={q:'',status:'tous'};
 
 /* ================= HELPERS ================= */
@@ -314,6 +362,7 @@ function renderParties(){
 function renderParty(){
   const p=partyById(route.pid);
   if(!p){route={tab:'parties'};return render();}
+  if(p.type==='skullking'){if(!skState||skState.pid!==p.id)openSkullParty(p.id);else renderSkullView();return;}
   const tot=partyTotals(p);const max=Math.max(...tot);const done=partyComplete(p);
   const cols=Array.from({length:p.rounds},(_,i)=>i);
   const lab=p.type==='pixies'?(i=>'M'+(i+1)):(i=>'R'+(i+1));
@@ -339,39 +388,58 @@ function deleteParty(id){if(!confirm('Supprimer cette partie ?'))return;db.parti
 
 /* ---- Nouvelle partie ---- */
 function newParty(){
-  const state={gameId:'',name:'',type:'manual',rounds:1,names:['','']};
+  const state={gameId:'',name:'',type:'manual',rounds:1,names:['',''],other:false};
+  const buildList=()=>{
+    const list=[];const seen=new Set();
+    const add=(name,gameId,thumb)=>{const k=name.toLowerCase();if(seen.has(k))return;seen.add(k);list.push({name,gameId,thumb:thumb||null});};
+    [...db.games].forEach(g=>add(g.name,g.id,g.thumb));
+    add('Pixies','');add('Skull King','');
+    list.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+    return list;
+  };
+  const gEmoji=name=>{const n=name.toLowerCase();return (n==='skull king'||n==='skullking')?'🏴‍☠️':(n==='pixies'?'🎯':'🎲');};
   const draw=()=>{
-    const games=[...db.games].sort((a,b)=>a.name.localeCompare(b.name));
+    const list=buildList();window.__glist=list;
+    const chosen=state.other||!!state.name;
+    const gthumb=it=>it.thumb?`<img class="gthumb" src="${esc(it.thumb)}" alt="">`:`<span class="gthumb ph">${gEmoji(it.name)}</span>`;
+    let picker;
+    if(!chosen){
+      picker=list.map((it,i)=>`<button type="button" class="gtile" onclick="__pick(${i})">
+          ${gthumb(it)}<span class="gname">${esc(it.name)}</span></button>`).join('')
+        +`<button type="button" class="gtile other" onclick="__pickOther()">
+          <span class="gthumb ph">＋</span><span class="gname">Autre jeu…</span></button>`;
+    }else if(state.other){
+      picker=`<button type="button" class="gtile other on" onclick="__clearPick()">
+        <span class="gthumb ph">＋</span><span class="gname">${state.name?esc(state.name):'Autre jeu…'}</span><span class="gchange">changer</span></button>`;
+    }else{
+      const it=list.find(x=>x.name.toLowerCase()===state.name.toLowerCase())||{name:state.name,thumb:null};
+      picker=`<button type="button" class="gtile on" onclick="__clearPick()">
+        ${gthumb(it)}<span class="gname">${esc(it.name)}</span><span class="gchange">changer</span></button>`;
+    }
     el('app').innerHTML=`
       <div class="top"><button class="iconbtn" onclick="goTab('parties')">‹</button>
-        <div class="brand"><h1>Nouvelle partie</h1><span class="sub">Choisis le jeu et les joueurs</span></div></div>
-      <div class="field"><label>Jeu</label>
-        <select class="inp" onchange="__pickGame(this.value)">
-          <option value="">— Saisir un nom —</option>
-          <option value="__pixies" ${state.name==='Pixies'&&!state.gameId?'selected':''}>Pixies (décompte auto)</option>
-          <option value="__skullking" ${state.name==='Skull King'&&!state.gameId?'selected':''}>Skull King (décompte auto)</option>
-          ${games.map(g=>`<option value="${g.id}" ${state.gameId===g.id?'selected':''}>${esc(g.name)}${autoType(g.name)!=='manual'?' (décompte auto)':''}</option>`).join('')}
-        </select></div>
-      ${(!state.gameId&&state.type==='manual')?`<div class="field"><input class="inp" placeholder="Nom du jeu" value="${esc(state.name)}" oninput="__setName(this.value)"></div>`:''}
-      ${state.type==='manual'?`<div class="field"><label>Nombre de tours</label>
+        <div class="brand"><h1>Nouvelle partie</h1><span class="sub">${chosen?'Ajoute les joueurs':'Choisis le jeu'}</span></div></div>
+      <div class="lab">Jeu</div>
+      <div class="gamepick">${picker}</div>
+      ${state.other?`<div class="field" style="margin-top:10px"><input class="inp" placeholder="Nom du jeu" value="${esc(state.name)}" oninput="__setName(this.value)"></div>`:''}
+      ${chosen?(state.type==='manual'?`<div class="field"><label>Nombre de tours</label>
         <div class="stepper"><button onclick="__rounds(-1)">−</button><div class="v">${state.rounds}</div><button onclick="__rounds(1)">＋</button></div></div>`:
         state.type==='pixies'?`<div class="note">🎯 <b>Pixies</b> : 3 manches. Par manche — coche les cartes validées, puis points bonus, spirales, croix, taille de zone (×2/×3/×4).</div>`:
-        `<div class="note">🏴‍☠️ <b>Skull King</b> : 10 manches. Par manche — pari, plis remportés et points bonus (les bonus ne comptent que si le pari est réussi).</div>`}
-      <div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
-      <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
-      <button class="btn primary" style="margin-top:18px" onclick="__start()">Démarrer</button>`;
-    el('players').innerHTML=state.names.map((n,i)=>`<div class="playerline">
+        `<div class="note">🏴‍☠️ <b>Skull King</b> : 10 manches. Par manche — pari, plis remportés et points bonus (les bonus ne comptent que si le pari est réussi).</div>`):''}
+      ${chosen?`<div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
+        <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
+        <button class="btn primary" style="margin-top:18px" onclick="__start()">Démarrer</button>`:''}`;
+    const pdiv=el('players');
+    if(pdiv)pdiv.innerHTML=state.names.map((n,i)=>`<div class="playerline">
       <input placeholder="Joueur ${i+1}" value="${esc(n)}" oninput="__setP(${i},this.value)">
       ${state.names.length>2?`<button onclick="__delP(${i})">×</button>`:''}</div>`).join('');
   };
-  window.__pickGame=v=>{
-    if(v==='__pixies'){state.gameId='';state.name='Pixies';state.type='pixies';state.rounds=3;}
-    else if(v==='__skullking'){state.gameId='';state.name='Skull King';state.type='skullking';state.rounds=10;}
-    else if(v===''){state.gameId='';state.name='';state.type='manual';}
-    else{const g=gameById(v);state.gameId=v;state.name=g.name;state.type=autoType(g.name);
-      if(state.type!=='manual')state.rounds=autoRounds(state.type);}
-    draw();
-  };
+  window.__clearPick=()=>{state.other=false;state.name='';state.gameId='';state.type='manual';draw();};
+  window.__pick=i=>{const it=window.__glist[i];state.other=false;state.gameId=it.gameId||'';
+    state.name=it.name;state.type=autoType(it.name);
+    if(state.type!=='manual')state.rounds=autoRounds(state.type);else state.rounds=state.rounds||1;
+    draw();};
+  window.__pickOther=()=>{state.other=true;state.gameId='';state.name='';state.type='manual';state.rounds=state.rounds||1;draw();};
   window.__setName=v=>{state.name=v;};
   window.__rounds=d=>{state.rounds=Math.max(1,Math.min(12,state.rounds+d));draw();};
   window.__setP=(i,v)=>{state.names[i]=v;};
@@ -382,7 +450,6 @@ function newParty(){
     if(clean.length<2)return alert('Il faut au moins 2 joueurs.');
     const name=(state.name||'').trim();
     if(!name)return alert('Choisis ou nomme un jeu.');
-    // lien ludothèque : crée l'entrée si nom inédit
     let gameId=state.gameId;
     if(!gameId){const existing=db.games.find(g=>g.name.toLowerCase()===name.toLowerCase());
       if(existing)gameId=existing.id;
@@ -510,7 +577,12 @@ function renderSkullSheet(){
     <h3>${esc(p.players[pi])} · Manche ${round} <span style="color:var(--dim);font-weight:500">(${round} carte${round>1?'s':''})</span></h3>
     ${chips('bid','Pari (plis annoncés)')}
     ${chips('tricks','Plis remportés')}
-    ${stepper('bonus','Points bonus','14 capturés, sirène/Skull King, pirates… Comptés seulement si le pari est réussi.')}
+    ${stepper('bonus','Points bonus','')}
+    <div class="lab" style="margin-top:2px">Bonus possibles (touche pour ajouter)</div>
+    <div class="bonusref">
+      ${SK_BONUSES.map(b=>`<button type="button" class="brow" onclick="skAddBonus(${b.v})"><span>${b.l}</span><span>+${b.v}</span></button>`).join('')}
+      <div class="brnote">Comptés uniquement si le pari est réussi.</div>
+    </div>
     <div class="brk" style="margin-top:14px">
       <div class="row"><span id="sk_baselab">Pari</span><span id="sk_base">0</span></div>
       <div class="row"><span id="sk_bonuslab">Bonus</span><span id="sk_bonusval">0</span></div>
@@ -522,6 +594,8 @@ function renderSkullSheet(){
 function skPick(field,n){const {c}=sheet.skull;c[field]=n;
   document.querySelectorAll('[data-sk="'+field+'"]').forEach(b=>b.classList.toggle('on',(+b.dataset.n)===n));
   skRefresh();}
+function skAddBonus(v){const c=sheet.skull.c;c.bonus=Math.max(0,(+c.bonus||0)+v);
+  const i=el('sk_bonus');if(i)i.value=c.bonus;skRefresh();}
 function skRefresh(){
   const {round,c}=sheet.skull;const r=skullRound(c,round);
   const set=(id,v)=>{const e=el(id);if(e)e.textContent=v;};
@@ -544,6 +618,76 @@ function saveSkull(){const {pid,pi,round,c}=sheet.skull;const p=partyById(pid);
   bumpPlay(p);save();closeSheet();render();}
 function clearSkull(){const {pid,pi,round}=sheet.skull;const p=partyById(pid);
   p.scores[pi][round-1]=null;delete p.boards[pi+'_'+(round-1)];save();closeSheet();render();}
+
+/* ================= VUE MANCHE-PAR-MANCHE SKULL KING ================= */
+function firstIncompleteRound(p){
+  for(let r=1;r<=p.rounds;r++){if(p.players.some((_,pi)=>p.scores[pi][r-1]==null))return r;}
+  return p.rounds;
+}
+function openSkullParty(pid,round){
+  const p=partyById(pid);
+  if(round==null)round=firstIncompleteRound(p);
+  round=Math.max(1,Math.min(p.rounds,round));
+  const entries=p.players.map((_,pi)=>{const b=p.boards[pi+'_'+(round-1)];
+    return (b&&!Array.isArray(b))
+      ?{bid:(b.bid==null?null:+b.bid),tricks:(b.tricks==null?null:+b.tricks),bonus:Math.round((+b.bonus||0)/10)*10}
+      :{bid:null,tricks:null,bonus:0};});
+  skState={pid,round,entries};
+  renderSkullView();
+}
+function skClose(){skState=null;route={tab:'parties'};render();}
+function skGoRound(r){openSkullParty(skState.pid,r);}
+function renderSkullView(){
+  const p=partyById(skState.pid);
+  if(!p){skState=null;route={tab:'parties'};return render();}
+  const round=skState.round;const tot=partyTotals(p);const done=partyComplete(p);
+  const maxTot=Math.max(...tot);
+  const roundDone=r=>p.players.every((_,pi)=>p.scores[pi][r-1]!=null);
+  const band=Array.from({length:p.rounds},(_,i)=>{const r=i+1;
+    return `<button type="button" class="skbtn ${r===round?'cur':''} ${roundDone(r)?'done':''}" onclick="skGoRound(${r})">${r}</button>`;}).join('');
+  const cards=p.players.map((name,pi)=>{
+    const c=skState.entries[pi];
+    const ready=(c.bid!=null&&c.tricks!=null);
+    const rs=ready?skullRound(c,round):null;
+    const scoreTxt=rs?((rs.total>0?'+':'')+rs.total):'—';
+    const chips=field=>Array.from({length:round+1},(_,n)=>`<button type="button" class="chip mini ${c[field]===n?'on':''}" data-skp="${pi}-${field}" data-n="${n}" onclick="skPartyPick(${pi},'${field}',${n})">${n}</button>`).join('');
+    return `<div class="skcard">
+      <div class="skhead"><span class="skname">${esc(name)}</span><span class="sktot">${tot[pi]} pts</span></div>
+      <div class="skrow"><span class="skmini-lab">Pari</span><div class="chips mini">${chips('bid')}</div></div>
+      <div class="skrow"><span class="skmini-lab">Plis</span><div class="chips mini">${chips('tricks')}</div></div>
+      <div class="skrow"><span class="skmini-lab">Bonus</span>
+        <div class="stepper compact"><button type="button" onclick="skPartyBonus(${pi},-10)">−</button>
+          <span class="v" id="skb_${pi}">${c.bonus||0}</span>
+          <button type="button" onclick="skPartyBonus(${pi},10)">＋</button></div>
+        <span class="skscore" id="sks_${pi}">${scoreTxt}</span></div>
+    </div>`;}).join('');
+  el('app').innerHTML=`
+    <div class="top"><button class="iconbtn" onclick="skClose()">‹</button>
+      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${done?'Partie terminée':'Manche '+round+' / '+p.rounds}</span></div>
+      <button class="iconbtn" onclick="deleteParty('${p.id}')" style="color:var(--danger)">🗑</button></div>
+    <div class="skband">${band}</div>
+    <div class="sklegend">Bonus (×10) — 14 : +10 · 14 noir : +20 · sirène ↔ pirate : +20 · Skull King ↔ sirène : +40 · pirate capturé : +30. Comptés si le pari est réussi.</div>
+    ${cards}
+    <button class="btn primary" style="margin-top:14px" onclick="skSaveRound()">${roundDone(round)?'Mettre à jour la manche '+round:'Enregistrer la manche '+round}</button>
+    ${done?`<div class="brk" style="margin-top:12px"><div class="row tot"><span>Vainqueur</span><span>${esc(p.players[tot.indexOf(maxTot)])} 🏆</span></div></div>`:''}
+    <div style="height:20px"></div>`;
+}
+function skPartyPick(pi,field,n){skState.entries[pi][field]=n;
+  document.querySelectorAll('[data-skp="'+pi+'-'+field+'"]').forEach(b=>b.classList.toggle('on',(+b.dataset.n)===n));
+  skScoreRefresh(pi);}
+function skPartyBonus(pi,d){const c=skState.entries[pi];c.bonus=Math.max(0,(+c.bonus||0)+d);
+  const e=el('skb_'+pi);if(e)e.textContent=c.bonus;skScoreRefresh(pi);}
+function skScoreRefresh(pi){const c=skState.entries[pi];const e=el('sks_'+pi);if(!e)return;
+  if(c.bid==null||c.tricks==null){e.textContent='—';return;}
+  const rs=skullRound(c,skState.round);e.textContent=(rs.total>0?'+':'')+rs.total;}
+function skSaveRound(){const p=partyById(skState.pid);const round=skState.round;
+  const incomplete=skState.entries.some(c=>c.bid==null||c.tricks==null);
+  if(incomplete&&!confirm('Certains joueurs n\'ont pas de pari ou de plis sélectionné (comptés comme 0). Enregistrer la manche ?'))return;
+  skState.entries.forEach((c,pi)=>{p.scores[pi][round-1]=skullRound(c,round).total;
+    p.boards[pi+'_'+(round-1)]={bid:+c.bid||0,tricks:+c.tricks||0,bonus:+c.bonus||0};});
+  bumpPlay(p);save();
+  openSkullParty(skState.pid,firstIncompleteRound(p));
+}
 
 /* ================= ONGLET LUDOTHÈQUE ================= */
 function newGameObj(name){return{id:uid(),name:name||'',bggId:null,thumb:null,minP:null,maxP:null,
