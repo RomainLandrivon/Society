@@ -161,6 +161,11 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chip{min-width:44px;height:46px;padding:0 8px;border-radius:11px;background:var(--card);font-weight:700;font-size:17px;color:var(--txt);display:flex;align-items:center;justify-content:center}
 .chip.on{background:var(--accent);color:#062018}
+.bggres{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}
+.bggrow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 13px}
+.bggrow .bggname{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bggrow .bggyear{color:var(--dim);font-size:12.5px;font-weight:700;flex:none}
+.bggrow:active{transform:scale(.99);border-color:var(--accent)}
 .chip.mini{min-width:34px;height:36px;font-size:14px;border-radius:9px;padding:0 4px}
 /* Vue manche-par-manche Skull King */
 .skband{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch}
@@ -311,6 +316,7 @@ let editor=null;                 // éditeur Pixies
 let sheet=null;                  // fiche cellule
 let skState=null;                // vue manche-par-manche Skull King
 let ludoFilter={q:'',status:'tous'};
+let __bggResults=[],__bggMode='direct';
 let partiesQuery='';
 
 /* ================= HELPERS ================= */
@@ -769,32 +775,22 @@ function editGame(id){
     const term=(el('g_name').value||'').trim();if(!term)return alert('Tape d\'abord un nom à chercher.');
     const proxy=db.settings.proxy;
     try{
+      let results=[];
       if(proxy){
-        // Flux complet via proxy (API XML stable : nom, vignette, joueurs, durée)
         const sx=await bggFetch('https://boardgamegeek.com/xmlapi2/search?type=boardgame&query='+encodeURIComponent(term));
-        const items=[...sx.querySelectorAll('item')].slice(0,8);
-        if(!items.length)return alert('Aucun résultat BGG.');
-        const pick=prompt('Résultats BGG :\n'+items.map((it,i)=>`${i+1}. ${it.querySelector('name').getAttribute('value')} (${(it.querySelector('yearpublished')||{getAttribute:()=>'?'}).getAttribute('value')})`).join('\n')+'\n\nNuméro à importer :');
-        const n=parseInt(pick,10);if(!n||n<1||n>items.length)return;
-        const bggId=items[n-1].getAttribute('id');
-        const tx=await bggFetch('https://boardgamegeek.com/xmlapi2/thing?stats=1&id='+bggId);
-        const it=tx.querySelector('item');const val=q=>{const e=it.querySelector(q);return e?e.getAttribute('value'):null;};
-        g.name=it.querySelector('name[type="primary"]').getAttribute('value');g.bggId=bggId;
-        g.thumb=(it.querySelector('thumbnail')||{textContent:null}).textContent;
-        g.minP=parseInt(val('minplayers'))||g.minP;g.maxP=parseInt(val('maxplayers'))||g.maxP;
-        g.minTime=parseInt(val('playingtime'))||g.minTime;g.maxTime=g.minTime;draw();
+        results=[...sx.querySelectorAll('item')].slice(0,20).map(it=>({
+          id:it.getAttribute('id'),
+          name:(it.querySelector('name')||{getAttribute:()=>''}).getAttribute('value')||'',
+          year:(it.querySelector('yearpublished')||{getAttribute:()=>''}).getAttribute('value')||''}));
       }else{
-        // Flux direct JSON, sans proxy — le test « comme Suivi »
-        const r=await fetch('https://boardgamegeek.com/search/boardgame?q='+encodeURIComponent(term)+'&showcount=10',{headers:{'Accept':'application/json'}});
+        const r=await fetch('https://boardgamegeek.com/search/boardgame?q='+encodeURIComponent(term)+'&showcount=20',{headers:{'Accept':'application/json'}});
         if(!r.ok)throw new Error('HTTP '+r.status);
         const data=await r.json();
-        const items=(data.items||[]).slice(0,10);
-        if(!items.length)return alert('Aucun résultat BGG.');
-        const pick=prompt('Résultats BGG (API JSON directe) :\n'+items.map((it,i)=>`${i+1}. ${it.name} (${it.yearpublished||'?'})`).join('\n')+'\n\nNuméro à importer :');
-        const n=parseInt(pick,10);if(!n||n<1||n>items.length)return;
-        const it=items[n-1];g.name=it.name;g.bggId=String(it.objectid);draw();
-        alert('Importé (nom + réf BGG) via l\'API JSON directe — donc CORS OK chez toi. Joueurs/durée/vignette : à compléter à la main, ou configure le proxy pour l\'import complet.');
+        results=(data.items||[]).slice(0,20).map(it=>({id:String(it.objectid),name:it.name||'',year:it.yearpublished||''}));
       }
+      if(!results.length)return alert('Aucun résultat BGG.');
+      __bggResults=results;__bggMode=proxy?'proxy':'direct';
+      renderBggResults(term);
     }catch(err){
       const cors=/Failed to fetch|NetworkError|Load failed|CORS/i.test(err.message||'');
       alert('Recherche BGG échouée'+(err.message?' ('+err.message+')':'')+'.\n\n'+
@@ -803,12 +799,42 @@ function editGame(id){
         'Saisis à la main, ou configure le proxy dans Réglages.')));
     }
   };
+  window.__bggPick=async(i)=>{
+    const res=__bggResults[i];if(!res)return;
+    if(__bggMode==='proxy'){
+      const s=document.querySelector('#sheetbg .sheet');
+      if(s)s.innerHTML='<h3>Import…</h3><div class="hint">Récupération de la fiche depuis BoardGameGeek.</div>';
+      try{
+        const tx=await bggFetch('https://boardgamegeek.com/xmlapi2/thing?stats=1&id='+res.id);
+        const it=tx.querySelector('item');const val=q=>{const e=it.querySelector(q);return e?e.getAttribute('value'):null;};
+        g.name=(it.querySelector('name[type="primary"]')||{getAttribute:()=>res.name}).getAttribute('value')||res.name;
+        g.bggId=res.id;
+        g.thumb=(it.querySelector('thumbnail')||{textContent:null}).textContent;
+        g.minP=parseInt(val('minplayers'))||g.minP;g.maxP=parseInt(val('maxplayers'))||g.maxP;
+        g.minTime=parseInt(val('playingtime'))||g.minTime;g.maxTime=g.minTime;
+        closeSheet();draw();
+      }catch(err){closeSheet();alert('Import de la fiche échoué ('+err.message+'). Réessaie.');}
+    }else{
+      g.name=res.name;g.bggId=res.id;closeSheet();draw();
+    }
+  };
   draw();
 }
 async function bggFetch(url){
   const proxy=db.settings.proxy;if(!proxy)throw new Error('proxy non configuré');
   const resp=await fetch(proxy+encodeURIComponent(url));if(!resp.ok)throw new Error('HTTP '+resp.status);
   const text=await resp.text();return new DOMParser().parseFromString(text,'application/xml');
+}
+function renderBggResults(term){
+  let sb=el('sheetbg');
+  if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
+    sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
+  sb.innerHTML=`<div class="sheet">
+    <h3>Résultats · « ${esc(term)} »</h3>
+    <div class="hint" style="margin-top:-6px">Touche un jeu pour l'importer.</div>
+    <div class="bggres">${__bggResults.map((r,i)=>`<button type="button" class="bggrow" onclick="__bggPick(${i})">
+      <span class="bggname">${esc(r.name)}</span>${r.year?`<span class="bggyear">${esc(r.year)}</span>`:''}</button>`).join('')}</div>
+    <button class="btn ghost done" type="button" onclick="closeSheet()">Annuler</button></div>`;
 }
 
 /* ================= ONGLET RÉGLAGES ================= */
