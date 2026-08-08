@@ -162,8 +162,10 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .chip{min-width:44px;height:46px;padding:0 8px;border-radius:11px;background:var(--card);font-weight:700;font-size:17px;color:var(--txt);display:flex;align-items:center;justify-content:center}
 .chip.on{background:var(--accent);color:#062018}
 .bggres{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}
-.bggrow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 13px}
-.bggrow .bggname{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bggrow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+.bggrow .bggthumb{width:40px;height:40px;border-radius:8px;object-fit:cover;background:var(--card2);flex:none}
+.bggrow .bggthumb.ph{display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--dim)}
+.bggrow .bggname{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .bggrow .bggyear{color:var(--dim);font-size:12.5px;font-weight:700;flex:none}
 .bggrow:active{transform:scale(.99);border-color:var(--accent)}
 .scirow{display:flex;gap:8px}
@@ -369,6 +371,24 @@ db.settings.proxy=db.settings.proxy||'';
 db.parties.forEach(p=>{if(!p.type)p.type=(p.game==='Pixies')?'pixies':'manual';
   if(!p.rounds)p.rounds=(p.type==='pixies')?3:(p.scores[0]?p.scores[0].length:1);
   if(!p.boards)p.boards={};});
+// fusion des alias de noms (ex. Citadels → Citadelles) + dédoublonnage de la ludothèque
+(function(){
+  const ALIAS={'citadels':'Citadelles'};
+  const nrm=s=>ALIAS[(s||'').toLowerCase()]||s;
+  let changed=false;
+  db.games.forEach(g=>{const n=nrm(g.name);if(n!==g.name){g.name=n;changed=true;}});
+  db.parties.forEach(p=>{const n=nrm(p.game);if(n!==p.game){p.game=n;changed=true;}});
+  const byName={},moved={};
+  db.games.slice().forEach(g=>{const k=g.name.toLowerCase();
+    if(byName[k]){const keep=byName[k];
+      keep.timesPlayed=(keep.timesPlayed||0)+(g.timesPlayed||0);
+      if((g.lastPlayed||0)>(keep.lastPlayed||0))keep.lastPlayed=g.lastPlayed;
+      if(!keep.thumb&&g.thumb)keep.thumb=g.thumb;
+      moved[g.id]=keep.id;db.games=db.games.filter(x=>x.id!==g.id);changed=true;
+    } else byName[k]=g;});
+  db.parties.forEach(p=>{if(p.gameId&&moved[p.gameId]){p.gameId=moved[p.gameId];changed=true;}});
+  if(changed)try{localStorage.setItem(STORE,JSON.stringify(db));}catch(e){}
+})();
 function save(){try{localStorage.setItem(STORE,JSON.stringify(db));}catch(e){alert('Sauvegarde impossible : '+e.message);}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
@@ -957,19 +977,20 @@ function editGame(id){
       let results=[];
       if(proxy){
         const sx=await bggFetch('https://boardgamegeek.com/xmlapi2/search?type=boardgame&query='+encodeURIComponent(term));
-        results=[...sx.querySelectorAll('item')].slice(0,20).map(it=>({
+        results=[...sx.querySelectorAll('item')].slice(0,40).map(it=>({
           id:it.getAttribute('id'),
           name:(it.querySelector('name')||{getAttribute:()=>''}).getAttribute('value')||'',
           year:(it.querySelector('yearpublished')||{getAttribute:()=>''}).getAttribute('value')||''}));
       }else{
-        const r=await fetch('https://boardgamegeek.com/search/boardgame?q='+encodeURIComponent(term)+'&showcount=20',{headers:{'Accept':'application/json'}});
+        const r=await fetch('https://boardgamegeek.com/search/boardgame?q='+encodeURIComponent(term)+'&showcount=40',{headers:{'Accept':'application/json'}});
         if(!r.ok)throw new Error('HTTP '+r.status);
         const data=await r.json();
-        results=(data.items||[]).slice(0,20).map(it=>({id:String(it.objectid),name:it.name||'',year:it.yearpublished||''}));
+        results=(data.items||[]).slice(0,40).map(it=>({id:String(it.objectid),name:it.name||'',year:it.yearpublished||''}));
       }
       if(!results.length)return alert('Aucun résultat BGG.');
       __bggResults=results;__bggMode=proxy?'proxy':'direct';
       renderBggResults(term);
+      if(proxy)bggEnhanceThumbs();
     }catch(err){
       const cors=/Failed to fetch|NetworkError|Load failed|CORS/i.test(err.message||'');
       alert('Recherche BGG échouée'+(err.message?' ('+err.message+')':'')+'.\n\n'+
@@ -1010,10 +1031,23 @@ function renderBggResults(term){
     sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
   sb.innerHTML=`<div class="sheet">
     <h3>Résultats · « ${esc(term)} »</h3>
-    <div class="hint" style="margin-top:-6px">Touche un jeu pour l'importer.</div>
+    <div class="hint" style="margin-top:-6px">${__bggResults.length} jeux · touche pour importer.</div>
     <div class="bggres">${__bggResults.map((r,i)=>`<button type="button" class="bggrow" onclick="__bggPick(${i})">
+      ${r.thumb?`<img class="bggthumb" src="${esc(r.thumb)}" alt="">`:`<span class="bggthumb ph" id="bggthumb_${i}">🎲</span>`}
       <span class="bggname">${esc(r.name)}</span>${r.year?`<span class="bggyear">${esc(r.year)}</span>`:''}</button>`).join('')}</div>
     <button class="btn ghost done" type="button" onclick="closeSheet()">Annuler</button></div>`;
+}
+async function bggEnhanceThumbs(){
+  const ids=__bggResults.map(r=>r.id).filter(Boolean);
+  if(!ids.length)return;
+  try{
+    const tx=await bggFetch('https://boardgamegeek.com/xmlapi2/thing?id='+ids.join(','));
+    const map={};[...tx.querySelectorAll('item')].forEach(it=>{
+      const id=it.getAttribute('id');const th=it.querySelector('thumbnail');
+      if(id&&th&&th.textContent)map[id]=th.textContent.trim();});
+    __bggResults.forEach((r,i)=>{if(map[r.id]){r.thumb=map[r.id];
+      const s=el('bggthumb_'+i);if(s)s.outerHTML='<img class="bggthumb" src="'+r.thumb.replace(/"/g,'&quot;')+'" alt="">';}});
+  }catch(e){/* on garde les pastilles par défaut */}
 }
 
 /* ================= ONGLET RÉGLAGES ================= */
