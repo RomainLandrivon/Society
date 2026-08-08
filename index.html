@@ -264,6 +264,12 @@ textarea.inp{min-height:70px;resize:vertical}
 .drawopt .drawoptpick{font-size:12px;font-weight:800;color:var(--accent);background:rgba(124,242,200,.12);padding:6px 12px;border-radius:20px;flex:none}
 .drawopt:active{transform:scale(.99);border-color:var(--accent)}
 .drawvs{text-align:center;font-size:12px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0}
+.fwgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.fwcell{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 4px;text-align:center}
+.fwcell>span{display:block;font-size:11px;color:var(--dim);font-weight:700;margin-bottom:3px}
+.fwcell input{width:100%;background:transparent;border:none;text-align:center;color:var(--txt);font-weight:800;font-size:17px;-moz-appearance:textfield;appearance:textfield}
+.fwcell input::-webkit-outer-spin-button,.fwcell input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.fwcell input:focus{outline:none}
 .rate{display:flex;gap:6px}
 .rate button{flex:1;aspect-ratio:1;border-radius:9px;background:var(--card);font-weight:700;font-size:14px;color:var(--dim)}
 .rate button.on{background:var(--accent2);color:#2a1608}
@@ -309,6 +315,7 @@ function autoType(name){const n=(name||'').toLowerCase();
   if(n==='7 wonders duel'||n==='7wonders duel'||n==='7wondersduel'||n==='7 wonders: duel')return '7wondersduel';
   if(n==='wingspan'||n==='wingspan vf')return 'wingspan';
   if(n==='citadelles'||n==='citadels')return 'citadels';
+  if(n==='faraway')return 'faraway';
   return 'manual';}
 function autoRounds(type){return type==='pixies'?3:(type==='skullking'?10:1);}
 
@@ -496,6 +503,7 @@ function renderParty(){
   if(!p){route={tab:'parties'};return render();}
   if(p.type==='skullking'){if(!skState||skState.pid!==p.id)openSkullParty(p.id);else renderSkullView();return;}
   if(p.type==='7wonders'||p.type==='7wondersduel'||p.type==='wingspan'||p.type==='citadels')return renderSevenParty(p.id);
+  if(p.type==='faraway')return renderFarawayParty(p.id);
   if(p.type==='manual'&&p.rounds<=1)return renderSimpleParty(p.id);
   const tot=partyTotals(p);const max=Math.max(...tot);const done=partyComplete(p);
   const cols=Array.from({length:p.rounds},(_,i)=>i);
@@ -534,7 +542,7 @@ function newParty(preGame){
       if(!ex)map.set(k,{name:disp,gameId:gameId||'',thumb:thumb||null});
       else{if(!ex.thumb&&thumb)ex.thumb=thumb;if(!ex.gameId&&gameId)ex.gameId=gameId;}};
     [...db.games].forEach(g=>add(g.name,g.id,g.thumb));
-    add('Pixies','');add('Skull King','');add('7 Wonders','');add('7 Wonders Duel','');add('Wingspan','');add('Citadelles','');
+    add('Pixies','');add('Skull King','');add('7 Wonders','');add('7 Wonders Duel','');add('Wingspan','');add('Citadelles','');add('Faraway','');
     const list=[...map.values()];
     list.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
     return list;
@@ -546,6 +554,7 @@ function newParty(preGame){
     if(n==='7 wonders duel')return '⚔️';
     if(n==='wingspan')return '🐦';
     if(n==='citadelles'||n==='citadels')return '🏰';
+    if(n==='faraway')return '🗺️';
     return '🎲';};
   const draw=()=>{
     const list=buildList();window.__glist=list;
@@ -577,6 +586,7 @@ function newParty(preGame){
         state.type==='7wonders'?`<div class="note">🏛️ <b>7 Wonders</b> : décompte par catégories (merveilles, militaire, pièces, civils, commerce, guildes, science). Science et pièces calculées automatiquement.</div>`:
         state.type==='7wondersduel'?`<div class="note">⚔️ <b>7 Wonders Duel</b> : décompte par catégories (merveilles, militaire, pièces, civils, science, commerce, guildes, progrès). Militaire 0/2/5/10, pièces calculées automatiquement.</div>`:
         state.type==='wingspan'?`<div class="note">🐦 <b>Wingspan</b> : grille additive (oiseaux, cartes bonus, objectifs de manche, œufs, nourriture stockée, cartes glissées).</div>`:
+        state.type==='faraway'?`<div class="note">🗺️ <b>Faraway</b> : la fame de chacune des 8 cartes Région (calculée en ordre inverse) + les sanctuaires. L'app fait la somme, peu importe l'ordre de saisie.</div>`:
         `<div class="note">🏰 <b>Citadelles</b> : valeur des quartiers + bonus (une de chaque couleur +3, 1ᵉʳ à 8 quartiers +4 ou cité complète +2, quartiers spéciaux).</div>`):''}
       ${chosen?`<div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
         <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
@@ -926,6 +936,68 @@ function saveSeven(){const {pid,pi,c}=sevenState;const p=partyById(pid);
   p.scores[pi][0]=catTotal(catConfig(p.type),c);p.boards[pi+'_0']=Object.assign({},c);
   bumpPlay(p);save();closeSheet();render();}
 function clearSeven(){const {pid,pi}=sevenState;const p=partyById(pid);
+  p.scores[pi][0]=null;delete p.boards[pi+'_0'];save();closeSheet();render();}
+
+/* ================= FARAWAY (8 régions + sanctuaires) ================= */
+let fwState=null;
+function farawayBoard(p,pi){const b=p.boards[pi+'_0'];return (b&&!Array.isArray(b)&&b.r)?b:null;}
+function fwRegions(c){return (c.r||[]).reduce((s,x)=>s+(+x||0),0);}
+function farawayTotal(c){return fwRegions(c)+(+c.sanc||0);}
+function renderFarawayParty(pid){
+  const p=partyById(pid);
+  const tot=p.players.map((_,pi)=>{const b=farawayBoard(p,pi);return b?farawayTotal(b):0;});
+  const done=p.players.every((_,pi)=>p.scores[pi][0]!=null);const max=Math.max(...tot);
+  const rows=p.players.map((name,pi)=>{const b=farawayBoard(p,pi);const scored=p.scores[pi][0]!=null;
+    return `<tr class="${done&&scored&&tot[pi]===max&&max>0?'winner':''}" onclick="openFarawaySheet('${pid}',${pi})">
+      <td>${esc(name)}</td><td>${b?fwRegions(b):'·'}</td><td>${b?(+b.sanc||0):'·'}</td><td class="total">${scored?tot[pi]:'＋'}</td></tr>`;}).join('');
+  el('app').innerHTML=`
+    <div class="top"><button class="iconbtn" onclick="goTab('parties')">‹</button>
+      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${p.players.length} joueurs · fame</span></div>
+      <button class="iconbtn" onclick="deleteParty('${p.id}')" style="color:var(--danger)">🗑</button></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Joueur</th><th>Régions</th><th>Sanct.</th><th>Σ</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="tapnote">Touche un joueur pour saisir la fame de ses 8 cartes et ses sanctuaires.</div>
+    ${done?`<div class="brk" style="margin-top:14px"><div class="row tot"><span>Vainqueur</span><span>${esc(p.players[tot.indexOf(max)])} 🏆</span></div></div>`:''}`;
+}
+function openFarawaySheet(pid,pi){
+  const p=partyById(pid);const b=farawayBoard(p,pi);
+  const r=(b&&b.r?b.r.slice(0,8):[]).concat(Array(8).fill(0)).slice(0,8);
+  fwState={pid,pi,c:{r,sanc:b?(+b.sanc||0):0}};renderFarawaySheet();
+}
+function renderFarawaySheet(){
+  const {pid,pi,c}=fwState;const p=partyById(pid);
+  let sb=el('sheetbg');
+  if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
+    sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
+  sb.innerHTML=`<div class="sheet">
+    <h3>${esc(p.players[pi])} · ${esc(p.game)}</h3>
+    <div class="lab">Fame de chaque carte Région (1 → 8)</div>
+    <div class="fwgrid">${c.r.map((v,i)=>`<div class="fwcell"><span>${i+1}</span>
+      <input type="number" inputmode="numeric" placeholder="0" value="${v?v:''}" oninput="fwInput(${i},this.value)"></div>`).join('')}</div>
+    <div class="lab">Sanctuaires</div>
+    <div class="stepper"><button type="button" onclick="fwStepSanc(-1)">−</button>
+      <input class="stepin" id="fw_sanc" type="number" inputmode="numeric" placeholder="0" value="${c.sanc?c.sanc:''}" oninput="fwSanc(this.value)">
+      <button type="button" onclick="fwStepSanc(1)">＋</button></div>
+    <div class="brk" style="margin-top:14px">
+      <div class="row"><span>Régions (8 cartes)</span><span id="fw_reg">0</span></div>
+      <div class="row"><span>Sanctuaires</span><span id="fw_sanctot">0</span></div>
+      <div class="row tot"><span>Total fame</span><span id="fw_tot">0</span></div></div>
+    <button class="btn primary done" type="button" id="fw_savebtn" onclick="saveFaraway()">Enregistrer</button>
+    ${p.scores[pi][0]!=null?`<button class="btn ghost danger" type="button" style="margin-top:8px" onclick="clearFaraway()">Effacer</button>`:''}</div>`;
+  fwRefresh();
+}
+function fwRefresh(){const {c}=fwState;const set=(id,v)=>{const e=el(id);if(e)e.textContent=v;};
+  set('fw_reg',fwRegions(c));set('fw_sanctot',+c.sanc||0);const t=farawayTotal(c);
+  set('fw_tot',t);set('fw_savebtn','Enregistrer '+t+' fame');}
+function fwInput(i,v){const n=parseInt(v,10);fwState.c.r[i]=(v===''||isNaN(n))?0:n;fwRefresh();}
+function fwSanc(v){const n=parseInt(v,10);fwState.c.sanc=(v===''||isNaN(n))?0:Math.max(0,n);fwRefresh();}
+function fwStepSanc(d){const c=fwState.c;c.sanc=Math.max(0,(+c.sanc||0)+d);
+  const i=el('fw_sanc');if(i)i.value=c.sanc?c.sanc:'';fwRefresh();}
+function saveFaraway(){const {pid,pi,c}=fwState;const p=partyById(pid);
+  p.scores[pi][0]=farawayTotal(c);p.boards[pi+'_0']={r:c.r.slice(0,8),sanc:+c.sanc||0};
+  bumpPlay(p);save();closeSheet();render();}
+function clearFaraway(){const {pid,pi}=fwState;const p=partyById(pid);
   p.scores[pi][0]=null;delete p.boards[pi+'_0'];save();closeSheet();render();}
 
 /* ================= ONGLET LUDOTHÈQUE ================= */
