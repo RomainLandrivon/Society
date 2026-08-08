@@ -503,10 +503,16 @@ function deleteParty(id){if(!confirm('Supprimer cette partie ?'))return;db.parti
 function newParty(){
   const state={gameId:'',name:'',type:'manual',rounds:1,names:['',''],other:false};
   const buildList=()=>{
-    const list=[];const seen=new Set();
-    const add=(name,gameId,thumb)=>{const k=name.toLowerCase();if(seen.has(k))return;seen.add(k);list.push({name,gameId,thumb:thumb||null});};
+    const ALIAS={'citadels':'Citadelles'};
+    const canon=n=>ALIAS[(n||'').toLowerCase()]||n;
+    const map=new Map();
+    const add=(name,gameId,thumb)=>{const disp=canon(name);const k=disp.toLowerCase();
+      const ex=map.get(k);
+      if(!ex)map.set(k,{name:disp,gameId:gameId||'',thumb:thumb||null});
+      else{if(!ex.thumb&&thumb)ex.thumb=thumb;if(!ex.gameId&&gameId)ex.gameId=gameId;}};
     [...db.games].forEach(g=>add(g.name,g.id,g.thumb));
     add('Pixies','');add('Skull King','');add('7 Wonders','');add('7 Wonders Duel','');add('Wingspan','');add('Citadelles','');
+    const list=[...map.values()];
     list.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
     return list;
   };
