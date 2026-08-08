@@ -983,16 +983,20 @@ function editGame(id){
       let results=[];
       if(proxy){
         const sx=await bggFetch('https://boardgamegeek.com/xmlapi2/search?type=boardgame&query='+encodeURIComponent(term));
-        results=[...sx.querySelectorAll('item')].slice(0,40).map(it=>({
+        results=[...sx.querySelectorAll('item')].map(it=>({
           id:it.getAttribute('id'),
           name:(it.querySelector('name')||{getAttribute:()=>''}).getAttribute('value')||'',
           year:(it.querySelector('yearpublished')||{getAttribute:()=>''}).getAttribute('value')||''}));
       }else{
-        const r=await fetch('https://boardgamegeek.com/search/boardgame?q='+encodeURIComponent(term)+'&showcount=40',{headers:{'Accept':'application/json'}});
+        const r=await fetch('https://boardgamegeek.com/search/boardgame?q='+encodeURIComponent(term)+'&showcount=100',{headers:{'Accept':'application/json'}});
         if(!r.ok)throw new Error('HTTP '+r.status);
         const data=await r.json();
-        results=(data.items||[]).slice(0,40).map(it=>({id:String(it.objectid),name:it.name||'',year:it.yearpublished||''}));
+        results=(data.items||[]).map(it=>({id:String(it.objectid),name:it.name||'',year:it.yearpublished||''}));
       }
+      // classe les correspondances exactes puis « commence par » en tête, avant de couper à 40
+      const q=term.toLowerCase();
+      const rank=x=>{const n=(x.name||'').toLowerCase();return n===q?0:(n.startsWith(q)?1:(n.includes(q)?2:3));};
+      results=results.map((x,i)=>({x,i})).sort((a,b)=>rank(a.x)-rank(b.x)||a.i-b.i).map(o=>o.x).slice(0,40);
       if(!results.length)return alert('Aucun résultat BGG.');
       __bggResults=results;__bggMode=proxy?'proxy':'direct';
       renderBggResults(term);
