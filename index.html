@@ -255,6 +255,15 @@ textarea.inp{min-height:70px;resize:vertical}
 .drawmeta{font-size:13px;color:var(--dim);margin-top:6px;font-weight:600}
 .two-btns{display:flex;gap:8px;margin-top:8px}
 .two-btns .btn{flex:1}
+.drawopt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.drawopt .drawoptthumb{width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--card2);flex:none}
+.drawopt .drawoptthumb.ph{display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--dim)}
+.drawopt .drawoptbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.drawopt .drawoptname{font-weight:800;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawopt .drawoptmeta{font-size:12.5px;color:var(--dim);font-weight:600}
+.drawopt .drawoptpick{font-size:12px;font-weight:800;color:var(--accent);background:rgba(124,242,200,.12);padding:6px 12px;border-radius:20px;flex:none}
+.drawopt:active{transform:scale(.99);border-color:var(--accent)}
+.drawvs{text-align:center;font-size:12px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0}
 .rate{display:flex;gap:6px}
 .rate button{flex:1;aspect-ratio:1;border-radius:9px;background:var(--card);font-weight:700;font-size:14px;color:var(--dim)}
 .rate button.on{background:var(--accent2);color:#2a1608}
@@ -374,8 +383,8 @@ let db={parties:[],games:[],settings:{proxy:''}};
 try{const raw=localStorage.getItem(STORE);if(raw)db=JSON.parse(raw);}catch(e){}
 db.parties=db.parties||[];db.games=db.games||[];db.settings=db.settings||{};
 db.settings.proxy=db.settings.proxy||'';
-db.draw=db.draw||{drawn:[],current:null,skips:{}};
-db.draw.drawn=db.draw.drawn||[];db.draw.skips=db.draw.skips||{};
+db.draw=db.draw||{};
+db.draw.pair=db.draw.pair||[];db.draw.picks=db.draw.picks||{};
 // migration douce : anciennes parties Pixies
 db.parties.forEach(p=>{if(!p.type)p.type=(p.game==='Pixies')?'pixies':'manual';
   if(!p.rounds)p.rounds=(p.type==='pixies')?3:(p.scores[0]?p.scores[0].length:1);
@@ -1076,51 +1085,47 @@ async function bggEnhanceThumbs(){
 
 /* ================= ONGLET TIRAGE (jeu au hasard, sans remise) ================= */
 function drawPool(){let pool=db.games.filter(g=>g.status!=='envie');if(!pool.length)pool=db.games.slice();return pool;}
-function drawGame(){
-  const pool=drawPool();if(!pool.length){renderDraw();return;}
-  let avail=pool.filter(g=>!db.draw.drawn.includes(g.id));
-  if(!avail.length){db.draw.drawn=[];avail=pool.filter(g=>g.id!==db.draw.current);if(!avail.length)avail=pool;}
-  const pick=avail[Math.floor(Math.random()*avail.length)];
-  db.draw.current=pick.id;
-  if(!db.draw.drawn.includes(pick.id))db.draw.drawn.push(pick.id);
-  save();renderDraw();
+function newPair(){
+  const pool=drawPool();
+  if(pool.length<2){db.draw.pair=[];return;}
+  const arr=pool.slice();
+  const a=arr.splice(Math.floor(Math.random()*arr.length),1)[0];
+  const b=arr.splice(Math.floor(Math.random()*arr.length),1)[0];
+  db.draw.pair=[a.id,b.id];
 }
-function skipGame(){
-  if(db.draw.current){db.draw.skips[db.draw.current]=(db.draw.skips[db.draw.current]||0)+1;save();}
-  drawGame();
+function drawPair(){newPair();save();renderDraw();}
+function pickGame(id){
+  const pair=db.draw.pair||[];
+  pair.forEach(gid=>{const st=db.draw.picks[gid]||(db.draw.picks[gid]={offered:0,picked:0});st.offered++;});
+  if(!db.draw.picks[id])db.draw.picks[id]={offered:0,picked:0};
+  db.draw.picks[id].picked++;
+  newPair();save();
+  const g=gameById(id);if(g)newParty({name:g.name,gameId:g.id});else renderDraw();
 }
-function startFromDraw(){const g=gameById(db.draw.current);if(!g)return;newParty({name:g.name,gameId:g.id});}
 function renderDraw(){
   const pool=drawPool();
-  // nettoie une sélection qui n'existe plus
-  if(db.draw.current&&!gameById(db.draw.current))db.draw.current=null;
-  db.draw.drawn=db.draw.drawn.filter(id=>gameById(id));
-  const cur=db.draw.current?gameById(db.draw.current):null;
-  const skipList=Object.keys(db.draw.skips).map(id=>({g:gameById(id),n:db.draw.skips[id]}))
-    .filter(x=>x.g&&x.n>0).sort((a,b)=>b.n-a.n).slice(0,10);
-  const meta=g=>{const players=(g.minP||g.maxP)?`${g.minP||'?'}–${g.maxP||'?'} j.`:'';const time=(g.minTime||g.maxTime)?`${g.minTime||g.maxTime} min`:'';return [players,time].filter(Boolean).join(' · ');};
+  db.draw.pair=(db.draw.pair||[]).filter(id=>gameById(id));
+  if(pool.length>=2 && db.draw.pair.length<2)newPair();
+  const pair=(db.draw.pair||[]).map(id=>gameById(id)).filter(Boolean);
+  const picks=Object.keys(db.draw.picks||{}).map(id=>({g:gameById(id),o:db.draw.picks[id].offered||0,p:db.draw.picks[id].picked||0}))
+    .filter(x=>x.g&&x.o>0).map(x=>Object.assign(x,{pct:Math.round(x.p/x.o*100)}))
+    .sort((a,b)=>b.pct-a.pct||b.p-a.p||a.g.name.localeCompare(b.g.name)).slice(0,12);
+  const meta=g=>{const players=(g.minP||g.maxP)?`${g.minP||'?'}\u2013${g.maxP||'?'} j.`:'';const time=(g.minTime||g.maxTime)?`${g.minTime||g.maxTime} min`:'';return [players,time].filter(Boolean).join(' \u00b7 ');};
+  const opt=g=>`<button type="button" class="drawopt" onclick="pickGame('${g.id}')">
+      ${g.thumb?`<img class="drawoptthumb" src="${esc(g.thumb)}" alt="">`:`<span class="drawoptthumb ph">\ud83c\udfb2</span>`}
+      <span class="drawoptbody"><span class="drawoptname">${esc(g.name)}</span>${meta(g)?`<span class="drawoptmeta">${esc(meta(g))}</span>`:''}</span>
+      <span class="drawoptpick">Choisir</span></button>`;
   el('app').innerHTML=`
-    <div class="top"><div class="iconbtn">🎰</div>
-      <div class="brand"><h1>Tirage</h1><span class="sub">Quel jeu ce soir ?</span></div></div>
-    ${!pool.length?`<div class="empty">Ajoute des jeux à ta ludothèque (possédés ou joués) pour tirer au hasard.</div>`:
-      cur?`
-        <div class="drawcard">
-          ${cur.thumb?`<img class="drawthumb" src="${esc(cur.thumb)}" alt="">`:`<div class="drawthumb ph">🎲</div>`}
-          <div class="drawname">${esc(cur.name)}</div>
-          ${meta(cur)?`<div class="drawmeta">${esc(meta(cur))}</div>`:''}
-        </div>
-        <div class="tapnote">${db.draw.drawn.length} / ${pool.length} jeux tirés ce cycle</div>
-        <button class="btn primary" onclick="startFromDraw()">▶ Lancer une partie</button>
-        <div class="two-btns">
-          <button class="btn" onclick="skipGame()">⏭ Skipper</button>
-          <button class="btn ghost" onclick="drawGame()">🎲 Retirer</button>
-        </div>`:`
-        <button class="btn primary" style="margin-top:6px" onclick="drawGame()">🎲 Tirer un jeu</button>
-        <div class="tapnote">${db.draw.drawn.length} / ${pool.length} jeux tirés ce cycle</div>`}
-    ${skipList.length?`<div class="lab" style="margin-top:22px">Jeux les plus skippés</div>
-      <div class="list">${skipList.map(x=>`<div class="tile">
-        <div class="grow"><div class="t">${esc(x.g.name)}</div></div>
-        <div class="badge">${x.n} skip${x.n>1?'s':''}</div></div>`).join('')}</div>`:''}`;
+    <div class="top"><div class="iconbtn">\ud83c\udfb0</div>
+      <div class="brand"><h1>Tirage</h1><span class="sub">Choisis entre deux jeux</span></div></div>
+    ${pool.length<2?`<div class="empty">Ajoute au moins 2 jeux (poss\u00e9d\u00e9s ou jou\u00e9s) \u00e0 ta ludoth\u00e8que pour lancer un tirage.</div>`:
+      `${pair.map(opt).join('<div class="drawvs">ou</div>')}
+       <button class="btn ghost" style="margin-top:12px" onclick="drawPair()">\ud83c\udfb2 Autres propositions</button>
+       <div class="tapnote">Touche le jeu que tu veux jouer \u2014 il lance une partie et compte comme choisi.</div>`}
+    ${picks.length?`<div class="lab" style="margin-top:22px">Taux de s\u00e9lection</div>
+      <div class="list">${picks.map(x=>`<div class="tile">
+        <div class="grow"><div class="t">${esc(x.g.name)}</div><div class="m">${x.p} / ${x.o} propositions</div></div>
+        <div class="badge">${x.pct}%</div></div>`).join('')}</div>`:''}`;
 }
 
 /* ================= ONGLET STATS (% de victoire par joueur) ================= */
