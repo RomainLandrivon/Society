@@ -166,6 +166,12 @@ tr.winner td:first-child::after{content:" 👑";font-size:12px}
 .bggrow .bggname{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bggrow .bggyear{color:var(--dim);font-size:12.5px;font-weight:700;flex:none}
 .bggrow:active{transform:scale(.99);border-color:var(--accent)}
+.scirow{display:flex;gap:8px}
+.sciunit{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;text-align:center}
+.sciunit>span{display:block;font-size:11px;color:var(--dim);font-weight:700;margin-bottom:6px}
+.sciunit .stepper.compact{padding:2px 4px;gap:2px;max-width:none;background:transparent}
+.sciunit .stepper.compact button{width:28px;height:28px;font-size:17px}
+.sciunit .stepper.compact .v{font-size:15px;min-width:22px}
 .chip.mini{min-width:34px;height:36px;font-size:14px;border-radius:9px;padding:0 4px}
 /* Vue manche-par-manche Skull King */
 .skband{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch}
@@ -281,8 +287,41 @@ function skullRound(c,round){
 function autoType(name){const n=(name||'').toLowerCase();
   if(n==='pixies')return 'pixies';
   if(n==='skull king'||n==='skullking')return 'skullking';
+  if(n==='7 wonders'||n==='7wonders'||n==='seven wonders')return '7wonders';
+  if(n==='7 wonders duel'||n==='7wonders duel'||n==='7wondersduel'||n==='7 wonders: duel')return '7wondersduel';
   return 'manual';}
 function autoRounds(type){return type==='pixies'?3:(type==='skullking'?10:1);}
+
+/* 7 Wonders — décompte par catégories (une fois, pas de manches).
+   Science = carré de chaque symbole + 7 par set de 3 différents.
+   Pièces = 1 point par tranche de 3. Militaire = net des jetons (peut être négatif). */
+const SEVEN_CATS=[
+  {k:'wonders',    lab:'Merveilles', short:'Merv', color:'var(--txt)'},
+  {k:'military',   lab:'Militaire',  short:'Mil',  color:'#ef4444', signed:true},
+  {k:'coins',      lab:'Pièces',     short:'Piè',  color:'#d4a017', coins:true},
+  {k:'civil',      lab:'Civils',     short:'Civ',  color:'#3b82f6'},
+  {k:'commercial', lab:'Commerce',   short:'Com',  color:'#eab308'},
+  {k:'guild',      lab:'Guildes',    short:'Gui',  color:'#a855f7'},
+  {k:'science',    lab:'Science',    short:'Sci',  color:'#22c55e', science:true}
+];
+// 7 Wonders Duel : science = points imprimés (pas de carré), militaire 0/2/5/10, + jetons Progrès
+const DUEL_CATS=[
+  {k:'wonders',    lab:'Merveilles', short:'Merv', color:'var(--txt)'},
+  {k:'military',   lab:'Militaire',  short:'Mil',  color:'#ef4444', mil:true},
+  {k:'coins',      lab:'Pièces',     short:'Piè',  color:'#d4a017', coins:true},
+  {k:'civil',      lab:'Civils',     short:'Civ',  color:'#3b82f6'},
+  {k:'science',    lab:'Science',    short:'Sci',  color:'#22c55e'},
+  {k:'commercial', lab:'Commerce',   short:'Com',  color:'#eab308'},
+  {k:'guild',      lab:'Guildes',    short:'Gui',  color:'#a855f7'},
+  {k:'progress',   lab:'Progrès',    short:'Prog', color:'#7cf2c8'}
+];
+function catConfig(type){return type==='7wondersduel'?DUEL_CATS:SEVEN_CATS;}
+function sevenScience(a,b,c){a=+a||0;b=+b||0;c=+c||0;return a*a+b*b+c*c+7*Math.min(a,b,c);}
+function catPts(cfg,c,k){const cat=cfg.find(x=>x.k===k);
+  if(cat&&cat.coins)return Math.floor((+c.coins||0)/3);
+  if(cat&&cat.science)return sevenScience(c.sci_compass,c.sci_gear,c.sci_tablet);
+  return +c[k]||0;}
+function catTotal(cfg,c){return cfg.reduce((s,cat)=>s+catPts(cfg,c,cat.k),0);}
 
 /* ================= CONSTANTES ================= */
 const COLOR_HEX={blue:'#3b82f6',green:'#22c55e',yellow:'#eab308',orange:'#f97316',red:'#ef4444',purple:'#a855f7',brown:'#a16207'};
@@ -374,6 +413,7 @@ function renderParty(){
   const p=partyById(route.pid);
   if(!p){route={tab:'parties'};return render();}
   if(p.type==='skullking'){if(!skState||skState.pid!==p.id)openSkullParty(p.id);else renderSkullView();return;}
+  if(p.type==='7wonders'||p.type==='7wondersduel')return renderSevenParty(p.id);
   const tot=partyTotals(p);const max=Math.max(...tot);const done=partyComplete(p);
   const cols=Array.from({length:p.rounds},(_,i)=>i);
   const lab=p.type==='pixies'?(i=>'M'+(i+1)):(i=>'R'+(i+1));
@@ -404,11 +444,11 @@ function newParty(){
     const list=[];const seen=new Set();
     const add=(name,gameId,thumb)=>{const k=name.toLowerCase();if(seen.has(k))return;seen.add(k);list.push({name,gameId,thumb:thumb||null});};
     [...db.games].forEach(g=>add(g.name,g.id,g.thumb));
-    add('Pixies','');add('Skull King','');
+    add('Pixies','');add('Skull King','');add('7 Wonders','');add('7 Wonders Duel','');
     list.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
     return list;
   };
-  const gEmoji=name=>{const n=name.toLowerCase();return (n==='skull king'||n==='skullking')?'🏴‍☠️':(n==='pixies'?'🎯':'🎲');};
+  const gEmoji=name=>{const n=name.toLowerCase();return (n==='skull king'||n==='skullking')?'🏴‍☠️':(n==='pixies'?'🎯':(n==='7 wonders'?'🏛️':(n==='7 wonders duel'?'⚔️':'🎲')));};
   const draw=()=>{
     const list=buildList();window.__glist=list;
     const chosen=state.other||!!state.name;
@@ -436,7 +476,9 @@ function newParty(){
       ${chosen?(state.type==='manual'?`<div class="field"><label>Nombre de tours</label>
         <div class="stepper"><button onclick="__rounds(-1)">−</button><div class="v">${state.rounds}</div><button onclick="__rounds(1)">＋</button></div></div>`:
         state.type==='pixies'?`<div class="note">🎯 <b>Pixies</b> : 3 manches. Par manche — coche les cartes validées, puis points bonus, spirales, croix, taille de zone (×2/×3/×4).</div>`:
-        `<div class="note">🏴‍☠️ <b>Skull King</b> : 10 manches. Par manche — pari, plis remportés et points bonus (les bonus ne comptent que si le pari est réussi).</div>`):''}
+        state.type==='skullking'?`<div class="note">🏴‍☠️ <b>Skull King</b> : 10 manches. Par manche — pari, plis remportés et points bonus (les bonus ne comptent que si le pari est réussi).</div>`:
+        state.type==='7wonders'?`<div class="note">🏛️ <b>7 Wonders</b> : décompte par catégories (merveilles, militaire, pièces, civils, commerce, guildes, science). Science et pièces calculées automatiquement.</div>`:
+        `<div class="note">⚔️ <b>7 Wonders Duel</b> : décompte par catégories (merveilles, militaire, pièces, civils, science, commerce, guildes, progrès). Militaire 0/2/5/10, pièces calculées automatiquement.</div>`):''}
       ${chosen?`<div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
         <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
         <button class="btn primary" style="margin-top:18px" onclick="__start()">Démarrer</button>`:''}`;
@@ -699,6 +741,88 @@ function skSaveRound(){const p=partyById(skState.pid);const round=skState.round;
   bumpPlay(p);save();
   openSkullParty(skState.pid,firstIncompleteRound(p));
 }
+
+/* ================= VUE 7 WONDERS / DUEL (décompte par catégories) ================= */
+let sevenState=null; // {pid, pi, c}
+function sevenBoard(p,pi){const b=p.boards[pi+'_0'];return (b&&!Array.isArray(b))?b:null;}
+function renderSevenParty(pid){
+  const p=partyById(pid);const cfg=catConfig(p.type);
+  const tot=p.players.map((_,pi)=>{const b=sevenBoard(p,pi);return b?catTotal(cfg,b):0;});
+  const done=p.players.every((_,pi)=>p.scores[pi][0]!=null);const max=Math.max(...tot);
+  const rows=p.players.map((name,pi)=>{
+    const b=sevenBoard(p,pi);const scored=p.scores[pi][0]!=null;
+    const cells=cfg.map(cat=>`<td style="color:${cat.color}">${b?catPts(cfg,b,cat.k):'\u00b7'}</td>`).join('');
+    return `<tr class="${done&&scored&&tot[pi]===max&&max>0?'winner':''}" onclick="openSevenSheet('${pid}',${pi})">
+      <td>${esc(name)}</td>${cells}<td class="total">${scored?tot[pi]:'\uff0b'}</td></tr>`;
+  }).join('');
+  el('app').innerHTML=`
+    <div class="top"><button class="iconbtn" onclick="goTab('parties')">\u2039</button>
+      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${p.players.length} joueurs \u00b7 par cat\u00e9gories</span></div>
+      <button class="iconbtn" onclick="deleteParty('${p.id}')" style="color:var(--danger)">\ud83d\uddd1</button></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Joueur</th>${cfg.map(c=>`<th style="color:${c.color}">${c.short}</th>`).join('')}<th>\u03a3</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="tapnote">Touche un joueur pour saisir son d\u00e9compte.</div>
+    ${done?`<div class="brk" style="margin-top:14px"><div class="row tot"><span>Vainqueur</span><span>${esc(p.players[tot.indexOf(max)])} \ud83c\udfc6</span></div></div>`:''}`;
+}
+function openSevenSheet(pid,pi){
+  const p=partyById(pid);const b=sevenBoard(p,pi);
+  const base={wonders:0,military:0,coins:0,civil:0,commercial:0,guild:0,progress:0,sci_compass:0,sci_gear:0,sci_tablet:0};
+  const c=Object.assign(base,b||{});
+  sevenState={pid,pi,c};renderSevenSheet();
+}
+function renderSevenSheet(){
+  const {pid,pi,c}=sevenState;const p=partyById(pid);const cfg=catConfig(p.type);
+  let sb=el('sheetbg');
+  if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
+    sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
+  const stepper=(field,hintId)=>`
+    <div class="stepper"><button type="button" onclick="swStep('${field}',-1)">\u2212</button>
+      <input class="stepin" id="sw_${field}" type="number" inputmode="numeric" placeholder="0" value="${c[field]?c[field]:''}" oninput="swInput('${field}',this.value)">
+      <button type="button" onclick="swStep('${field}',1)">\uff0b</button></div>
+    ${hintId?`<div class="hint" id="${hintId}"></div>`:''}`;
+  const field=cat=>{
+    const head=`<div class="lab" style="color:${cat.color}">${cat.lab}${cat.signed?' (peut \u00eatre n\u00e9gatif)':''}</div>`;
+    if(cat.science){
+      return head+`<div class="scirow">${[['sci_compass','Compas'],['sci_gear','Engrenage'],['sci_tablet','Tablette']].map(([k,l])=>`<div class="sciunit"><span>${l}</span>
+        <div class="stepper compact"><button type="button" onclick="swStep('${k}',-1)">\u2212</button><span class="v" id="sw_${k}">0</span><button type="button" onclick="swStep('${k}',1)">\uff0b</button></div></div>`).join('')}</div><div class="hint" id="sw_scihint"></div>`;
+    }
+    if(cat.coins)return head+stepper('coins','sw_coinshint');
+    if(cat.mil)return head+`<div class="chips">${[0,2,5,10].map(n=>`<button type="button" class="chip ${(+c.military||0)===n?'on':''}" data-swmil="${n}" onclick="swPickMil(${n})">${n}</button>`).join('')}</div>`;
+    return head+stepper(cat.k);
+  };
+  sb.innerHTML=`<div class="sheet">
+    <h3>${esc(p.players[pi])} \u00b7 ${esc(p.game)}</h3>
+    ${cfg.map(field).join('')}
+    <div class="brk" style="margin-top:14px">
+      ${cfg.map(cat=>`<div class="row"><span style="color:${cat.color}">${cat.lab}</span><span id="brk_sw_${cat.k}">0</span></div>`).join('')}
+      <div class="row tot"><span>Total</span><span id="brk_sw_tot">0</span></div></div>
+    <button class="btn primary done" type="button" id="sw_savebtn" onclick="saveSeven()">Enregistrer</button>
+    ${p.scores[pi][0]!=null?`<button class="btn ghost danger" type="button" style="margin-top:8px" onclick="clearSeven()">Effacer</button>`:''}</div>`;
+  sevenRefresh();
+}
+function sevenRefresh(){
+  const {pid,c}=sevenState;const p=partyById(pid);const cfg=catConfig(p.type);
+  const set=(id,v)=>{const e=el(id);if(e)e.textContent=v;};
+  if(el('sw_coinshint'))set('sw_coinshint','= '+Math.floor((+c.coins||0)/3)+' pts (1 par tranche de 3)');
+  if(el('sw_scihint')){set('sw_scihint','= '+sevenScience(c.sci_compass,c.sci_gear,c.sci_tablet)+' pts (carr\u00e9 de chaque symbole + 7 par set complet)');
+    ['sci_compass','sci_gear','sci_tablet'].forEach(k=>set('sw_'+k,+c[k]||0));}
+  cfg.forEach(cat=>set('brk_sw_'+cat.k,catPts(cfg,c,cat.k)));
+  const t=catTotal(cfg,c);set('brk_sw_tot',t);set('sw_savebtn','Enregistrer '+t+' pts');
+}
+function swPickMil(n){const c=sevenState.c;c.military=n;
+  document.querySelectorAll('[data-swmil]').forEach(b=>b.classList.toggle('on',(+b.dataset.swmil)===n));
+  sevenRefresh();}
+function swStep(f,d){const c=sevenState.c;const min=(f==='military')?-50:0;
+  c[f]=Math.max(min,(+c[f]||0)+d);const i=el('sw_'+f);if(i&&i.tagName==='INPUT')i.value=c[f]?c[f]:'';
+  sevenRefresh();}
+function swInput(f,v){const c=sevenState.c;const n=parseInt(v,10);const min=(f==='military')?-50:0;
+  c[f]=(v===''||isNaN(n))?0:Math.max(min,n);sevenRefresh();}
+function saveSeven(){const {pid,pi,c}=sevenState;const p=partyById(pid);
+  p.scores[pi][0]=catTotal(catConfig(p.type),c);p.boards[pi+'_0']=Object.assign({},c);
+  bumpPlay(p);save();closeSheet();render();}
+function clearSeven(){const {pid,pi}=sevenState;const p=partyById(pid);
+  p.scores[pi][0]=null;delete p.boards[pi+'_0'];save();closeSheet();render();}
 
 /* ================= ONGLET LUDOTHÈQUE ================= */
 function newGameObj(name){return{id:uid(),name:name||'',bggId:null,thumb:null,minP:null,maxP:null,
