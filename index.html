@@ -289,6 +289,8 @@ function autoType(name){const n=(name||'').toLowerCase();
   if(n==='skull king'||n==='skullking')return 'skullking';
   if(n==='7 wonders'||n==='7wonders'||n==='seven wonders')return '7wonders';
   if(n==='7 wonders duel'||n==='7wonders duel'||n==='7wondersduel'||n==='7 wonders: duel')return '7wondersduel';
+  if(n==='wingspan'||n==='wingspan vf')return 'wingspan';
+  if(n==='citadelles'||n==='citadels')return 'citadels';
   return 'manual';}
 function autoRounds(type){return type==='pixies'?3:(type==='skullking'?10:1);}
 
@@ -307,7 +309,7 @@ const SEVEN_CATS=[
 // 7 Wonders Duel : science = points imprimés (pas de carré), militaire 0/2/5/10, + jetons Progrès
 const DUEL_CATS=[
   {k:'wonders',    lab:'Merveilles', short:'Merv', color:'var(--txt)'},
-  {k:'military',   lab:'Militaire',  short:'Mil',  color:'#ef4444', mil:true},
+  {k:'military',   lab:'Militaire',  short:'Mil',  color:'#ef4444', chips:[0,2,5,10]},
   {k:'coins',      lab:'Pièces',     short:'Piè',  color:'#d4a017', coins:true},
   {k:'civil',      lab:'Civils',     short:'Civ',  color:'#3b82f6'},
   {k:'science',    lab:'Science',    short:'Sci',  color:'#22c55e'},
@@ -315,7 +317,28 @@ const DUEL_CATS=[
   {k:'guild',      lab:'Guildes',    short:'Gui',  color:'#a855f7'},
   {k:'progress',   lab:'Progrès',    short:'Prog', color:'#7cf2c8'}
 ];
-function catConfig(type){return type==='7wondersduel'?DUEL_CATS:SEVEN_CATS;}
+// Wingspan — grille additive (1 pt par œuf / nourriture stockée / carte glissée)
+const WINGSPAN_CATS=[
+  {k:'birds',  lab:'Oiseaux',            short:'Ois',  color:'#22c55e'},
+  {k:'bonus',  lab:'Cartes bonus',       short:'Bonus',color:'#f2b47c'},
+  {k:'goals',  lab:'Objectifs de manche',short:'Obj',  color:'#7cf2c8'},
+  {k:'eggs',   lab:'Œufs',               short:'Œufs', color:'#eab308'},
+  {k:'food',   lab:'Nourriture stockée', short:'Nour', color:'#a16207'},
+  {k:'tucked', lab:'Cartes glissées',    short:'Gliss',color:'#3b82f6'}
+];
+// Citadelles — valeur des quartiers + bonus (5 couleurs +3, 1er à 8 +4 / cité complète +2, quartiers spéciaux)
+const CITADELS_CATS=[
+  {k:'districts',  lab:'Valeur des quartiers',        short:'Quart', color:'var(--txt)'},
+  {k:'completion', lab:'Cité complète (8 quartiers)', short:'Cité',  color:'#f2b47c', chips:[0,2,4], chipLabels:['Non','+2','1ᵉʳ +4']},
+  {k:'colors',     lab:'Une de chaque couleur',       short:'5coul', color:'#a855f7', toggle:3},
+  {k:'special',    lab:'Quartiers spéciaux (bonus)',  short:'Spé',   color:'#3b82f6'}
+];
+function catConfig(type){
+  if(type==='7wondersduel')return DUEL_CATS;
+  if(type==='wingspan')return WINGSPAN_CATS;
+  if(type==='citadels')return CITADELS_CATS;
+  return SEVEN_CATS;
+}
 function sevenScience(a,b,c){a=+a||0;b=+b||0;c=+c||0;return a*a+b*b+c*c+7*Math.min(a,b,c);}
 function catPts(cfg,c,k){const cat=cfg.find(x=>x.k===k);
   if(cat&&cat.coins)return Math.floor((+c.coins||0)/3);
@@ -409,11 +432,30 @@ function renderParties(){
 }
 function __partiesQ(v){partiesQuery=v;renderParties();const s=el('app').querySelector('.search');if(s){s.focus();s.setSelectionRange(v.length,v.length);}}
 
+function renderSimpleParty(pid){
+  const p=partyById(pid);
+  const ranked=p.players.map((n,pi)=>({n,pi,s:p.scores[pi][0]}))
+    .sort((a,b)=>{if(a.s==null&&b.s==null)return 0;if(a.s==null)return 1;if(b.s==null)return -1;return b.s-a.s;});
+  const scored=ranked.filter(r=>r.s!=null).map(r=>r.s);
+  const maxS=scored.length?Math.max(...scored):null;
+  const allDone=p.players.every((_,pi)=>p.scores[pi][0]!=null);
+  el('app').innerHTML=`
+    <div class="top"><button class="iconbtn" onclick="goTab('parties')">‹</button>
+      <div class="brand"><h1>${esc(p.game)}</h1><span class="sub">${p.players.length} joueurs · le plus haut l'emporte</span></div>
+      <button class="iconbtn" onclick="deleteParty('${p.id}')" style="color:var(--danger)">🗑</button></div>
+    <div class="list">
+      ${ranked.map(r=>`<div class="tile" onclick="openScore('${pid}',${r.pi},0)">
+        <div class="grow"><div class="t">${maxS!=null&&r.s===maxS?'🏆 ':''}${esc(r.n)}</div></div>
+        <div class="badge">${r.s==null?'＋':r.s+' pts'}</div><div class="chev">›</div></div>`).join('')}
+    </div>
+    <div class="tapnote">Touche un joueur pour saisir son score.${allDone?'':' Le plus haut total gagne.'}</div>`;
+}
 function renderParty(){
   const p=partyById(route.pid);
   if(!p){route={tab:'parties'};return render();}
   if(p.type==='skullking'){if(!skState||skState.pid!==p.id)openSkullParty(p.id);else renderSkullView();return;}
-  if(p.type==='7wonders'||p.type==='7wondersduel')return renderSevenParty(p.id);
+  if(p.type==='7wonders'||p.type==='7wondersduel'||p.type==='wingspan'||p.type==='citadels')return renderSevenParty(p.id);
+  if(p.type==='manual'&&p.rounds<=1)return renderSimpleParty(p.id);
   const tot=partyTotals(p);const max=Math.max(...tot);const done=partyComplete(p);
   const cols=Array.from({length:p.rounds},(_,i)=>i);
   const lab=p.type==='pixies'?(i=>'M'+(i+1)):(i=>'R'+(i+1));
@@ -444,11 +486,18 @@ function newParty(){
     const list=[];const seen=new Set();
     const add=(name,gameId,thumb)=>{const k=name.toLowerCase();if(seen.has(k))return;seen.add(k);list.push({name,gameId,thumb:thumb||null});};
     [...db.games].forEach(g=>add(g.name,g.id,g.thumb));
-    add('Pixies','');add('Skull King','');add('7 Wonders','');add('7 Wonders Duel','');
+    add('Pixies','');add('Skull King','');add('7 Wonders','');add('7 Wonders Duel','');add('Wingspan','');add('Citadelles','');
     list.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
     return list;
   };
-  const gEmoji=name=>{const n=name.toLowerCase();return (n==='skull king'||n==='skullking')?'🏴‍☠️':(n==='pixies'?'🎯':(n==='7 wonders'?'🏛️':(n==='7 wonders duel'?'⚔️':'🎲')));};
+  const gEmoji=name=>{const n=name.toLowerCase();
+    if(n==='skull king'||n==='skullking')return '🏴‍☠️';
+    if(n==='pixies')return '🎯';
+    if(n==='7 wonders')return '🏛️';
+    if(n==='7 wonders duel')return '⚔️';
+    if(n==='wingspan')return '🐦';
+    if(n==='citadelles'||n==='citadels')return '🏰';
+    return '🎲';};
   const draw=()=>{
     const list=buildList();window.__glist=list;
     const chosen=state.other||!!state.name;
@@ -473,12 +522,13 @@ function newParty(){
       <div class="lab">Jeu</div>
       <div class="gamepick">${picker}</div>
       ${state.other?`<div class="field" style="margin-top:10px"><input class="inp" placeholder="Nom du jeu" value="${esc(state.name)}" oninput="__setName(this.value)"></div>`:''}
-      ${chosen?(state.type==='manual'?`<div class="field"><label>Nombre de tours</label>
-        <div class="stepper"><button onclick="__rounds(-1)">−</button><div class="v">${state.rounds}</div><button onclick="__rounds(1)">＋</button></div></div>`:
+      ${chosen?(state.type==='manual'?`<div class="note">🎲 Décompte libre : un score par joueur, le plus haut l'emporte.</div>`:
         state.type==='pixies'?`<div class="note">🎯 <b>Pixies</b> : 3 manches. Par manche — coche les cartes validées, puis points bonus, spirales, croix, taille de zone (×2/×3/×4).</div>`:
         state.type==='skullking'?`<div class="note">🏴‍☠️ <b>Skull King</b> : 10 manches. Par manche — pari, plis remportés et points bonus (les bonus ne comptent que si le pari est réussi).</div>`:
         state.type==='7wonders'?`<div class="note">🏛️ <b>7 Wonders</b> : décompte par catégories (merveilles, militaire, pièces, civils, commerce, guildes, science). Science et pièces calculées automatiquement.</div>`:
-        `<div class="note">⚔️ <b>7 Wonders Duel</b> : décompte par catégories (merveilles, militaire, pièces, civils, science, commerce, guildes, progrès). Militaire 0/2/5/10, pièces calculées automatiquement.</div>`):''}
+        state.type==='7wondersduel'?`<div class="note">⚔️ <b>7 Wonders Duel</b> : décompte par catégories (merveilles, militaire, pièces, civils, science, commerce, guildes, progrès). Militaire 0/2/5/10, pièces calculées automatiquement.</div>`:
+        state.type==='wingspan'?`<div class="note">🐦 <b>Wingspan</b> : grille additive (oiseaux, cartes bonus, objectifs de manche, œufs, nourriture stockée, cartes glissées).</div>`:
+        `<div class="note">🏰 <b>Citadelles</b> : valeur des quartiers + bonus (une de chaque couleur +3, 1ᵉʳ à 8 quartiers +4 ou cité complète +2, quartiers spéciaux).</div>`):''}
       ${chosen?`<div class="lab">Joueurs (2 à 6)</div><div id="players"></div>
         <button class="btn ghost sm" style="width:100%" onclick="__addP()">＋ Ajouter un joueur</button>
         <button class="btn primary" style="margin-top:18px" onclick="__start()">Démarrer</button>`:''}`;
@@ -528,12 +578,12 @@ function renderManualSheet(){
   let sb=el('sheetbg');
   if(!sb){sb=document.createElement('div');sb.id='sheetbg';sb.className='sheet-bg';
     sb.onclick=e=>{if(e.target===sb)closeSheet();};document.body.appendChild(sb);}
-  const cur=p.scores[pi][m];
+  const cur=p.scores[pi][m];const single=p.rounds<=1;
   sb.innerHTML=`<div class="sheet">
-    <h3>${esc(p.players[pi])} · Tour ${m+1}</h3>
+    <h3>${esc(p.players[pi])} · ${single?'Score':'Tour '+(m+1)}</h3>
     <input class="bigin" id="manin" type="number" inputmode="numeric" value="${cur==null?'':cur}" placeholder="0">
     <button class="btn primary done" onclick="__saveManual()">Enregistrer</button>
-    ${cur!=null?`<button class="btn ghost danger" style="margin-top:8px" onclick="__clearManual()">Effacer ce tour</button>`:''}</div>`;
+    ${cur!=null?`<button class="btn ghost danger" style="margin-top:8px" onclick="__clearManual()">${single?'Effacer':'Effacer ce tour'}</button>`:''}</div>`;
   setTimeout(()=>{const i=el('manin');if(i)i.focus();},50);
   window.__saveManual=()=>{const raw=el('manin').value.trim();const v=raw===''?null:parseInt(raw,10);
     if(raw!==''&&isNaN(v))return alert('Nombre invalide.');
@@ -766,8 +816,8 @@ function renderSevenParty(pid){
     ${done?`<div class="brk" style="margin-top:14px"><div class="row tot"><span>Vainqueur</span><span>${esc(p.players[tot.indexOf(max)])} \ud83c\udfc6</span></div></div>`:''}`;
 }
 function openSevenSheet(pid,pi){
-  const p=partyById(pid);const b=sevenBoard(p,pi);
-  const base={wonders:0,military:0,coins:0,civil:0,commercial:0,guild:0,progress:0,sci_compass:0,sci_gear:0,sci_tablet:0};
+  const p=partyById(pid);const b=sevenBoard(p,pi);const cfg=catConfig(p.type);
+  const base={sci_compass:0,sci_gear:0,sci_tablet:0};cfg.forEach(cat=>base[cat.k]=0);
   const c=Object.assign(base,b||{});
   sevenState={pid,pi,c};renderSevenSheet();
 }
@@ -788,7 +838,10 @@ function renderSevenSheet(){
         <div class="stepper compact"><button type="button" onclick="swStep('${k}',-1)">\u2212</button><span class="v" id="sw_${k}">0</span><button type="button" onclick="swStep('${k}',1)">\uff0b</button></div></div>`).join('')}</div><div class="hint" id="sw_scihint"></div>`;
     }
     if(cat.coins)return head+stepper('coins','sw_coinshint');
-    if(cat.mil)return head+`<div class="chips">${[0,2,5,10].map(n=>`<button type="button" class="chip ${(+c.military||0)===n?'on':''}" data-swmil="${n}" onclick="swPickMil(${n})">${n}</button>`).join('')}</div>`;
+    if(cat.chips){const labels=cat.chipLabels||cat.chips.map(String);
+      return head+`<div class="chips">${cat.chips.map((v,idx)=>`<button type="button" class="chip ${(+c[cat.k]||0)===v?'on':''}" data-swchip="${cat.k}" data-v="${v}" onclick="swPickChip('${cat.k}',${v})">${labels[idx]}</button>`).join('')}</div>`;}
+    if(cat.toggle!=null){const on=(+c[cat.k]||0)>0;
+      return head+`<div class="toggle" onclick="swToggle('${cat.k}',${cat.toggle})"><span>Oui (+${cat.toggle})</span><div class="switch ${on?'on':''}" id="swtog_${cat.k}"></div></div>`;}
     return head+stepper(cat.k);
   };
   sb.innerHTML=`<div class="sheet">
@@ -810,9 +863,11 @@ function sevenRefresh(){
   cfg.forEach(cat=>set('brk_sw_'+cat.k,catPts(cfg,c,cat.k)));
   const t=catTotal(cfg,c);set('brk_sw_tot',t);set('sw_savebtn','Enregistrer '+t+' pts');
 }
-function swPickMil(n){const c=sevenState.c;c.military=n;
-  document.querySelectorAll('[data-swmil]').forEach(b=>b.classList.toggle('on',(+b.dataset.swmil)===n));
+function swPickChip(k,v){const c=sevenState.c;c[k]=v;
+  document.querySelectorAll('[data-swchip="'+k+'"]').forEach(b=>b.classList.toggle('on',(+b.dataset.v)===v));
   sevenRefresh();}
+function swToggle(k,n){const c=sevenState.c;c[k]=((+c[k]||0)>0)?0:n;
+  const sw=el('swtog_'+k);if(sw)sw.classList.toggle('on',(+c[k]||0)>0);sevenRefresh();}
 function swStep(f,d){const c=sevenState.c;const min=(f==='military')?-50:0;
   c[f]=Math.max(min,(+c[f]||0)+d);const i=el('sw_'+f);if(i&&i.tagName==='INPUT')i.value=c[f]?c[f]:'';
   sevenRefresh();}
