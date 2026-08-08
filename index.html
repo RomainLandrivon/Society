@@ -1130,7 +1130,7 @@ function renderDraw(){
 
 /* ================= ONGLET STATS (% de victoire par joueur) ================= */
 function computeStats(gameFilter){
-  const stat={};let n=0;
+  const stat={};let n=0;let best=null;
   db.parties.forEach(p=>{
     if(!partyComplete(p))return;
     if(gameFilter&&p.game!==gameFilter)return;
@@ -1138,18 +1138,19 @@ function computeStats(gameFilter){
     const tot=partyTotals(p);const max=Math.max(...tot);
     p.players.forEach((name,pi)=>{const key=(name||'').trim();if(!key)return;
       const s=stat[key]||(stat[key]={name:key,played:0,won:0});
-      s.played++;if(tot[pi]===max)s.won++;});
+      s.played++;if(tot[pi]===max)s.won++;
+      if(best===null||tot[pi]>best.score)best={score:tot[pi],player:key,game:p.game,date:p.created};});
   });
   const rows=Object.values(stat).map(s=>Object.assign(s,{pct:s.played?Math.round(s.won/s.played*100):0}))
     .sort((a,b)=>b.pct-a.pct||b.won-a.won||b.played-a.played||a.name.localeCompare(b.name));
-  return {rows,n};
+  return {rows,n,best};
 }
 function __statsG(i){statsGame=(i<0)?'':(window.__statsGames[i]||'');renderStats();}
 function renderStats(){
   const games=[...new Set(db.parties.filter(partyComplete).map(p=>p.game))].sort((a,b)=>a.localeCompare(b,'fr'));
   window.__statsGames=games;
   if(statsGame&&!games.includes(statsGame))statsGame='';
-  const {rows,n}=computeStats(statsGame);
+  const {rows,n,best}=computeStats(statsGame);
   el('app').innerHTML=`
     <div class="top"><div class="iconbtn">📊</div>
       <div class="brand"><h1>Stats</h1><span class="sub">${n} partie${n>1?'s':''} terminée${n>1?'s':''}${statsGame?' · '+esc(statsGame):''}</span></div></div>
@@ -1157,6 +1158,7 @@ function renderStats(){
       <button class="${!statsGame?'on':''}" onclick="__statsG(-1)">Tous</button>
       ${games.map((g,i)=>`<button class="${statsGame===g?'on':''}" onclick="__statsG(${i})">${esc(g)}</button>`).join('')}
     </div>`:''}
+    ${statsGame&&best?`<div class="brk" style="margin-bottom:12px"><div class="row tot"><span>Meilleur score</span><span>${best.score} — ${esc(best.player)}</span></div></div>`:''}
     ${rows.length?`<div class="tablewrap"><table>
       <thead><tr><th>Joueur</th><th>Joué</th><th>Vict.</th><th>%</th></tr></thead>
       <tbody>${rows.map((r,i)=>`<tr class="${i===0&&r.won>0?'winner':''}">
