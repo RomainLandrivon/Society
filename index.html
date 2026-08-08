@@ -248,6 +248,13 @@ textarea.inp{min-height:70px;resize:vertical}
 .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#062018;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .footer{text-align:center;color:var(--dim);font-size:11px;margin-top:26px;line-height:1.6}
+.drawcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;text-align:center;margin-top:6px}
+.drawthumb{width:120px;height:120px;border-radius:16px;object-fit:cover;background:var(--card2);margin:0 auto 14px;display:block}
+.drawthumb.ph{display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--dim)}
+.drawname{font-size:20px;font-weight:800;line-height:1.2}
+.drawmeta{font-size:13px;color:var(--dim);margin-top:6px;font-weight:600}
+.two-btns{display:flex;gap:8px;margin-top:8px}
+.two-btns .btn{flex:1}
 .rate{display:flex;gap:6px}
 .rate button{flex:1;aspect-ratio:1;border-radius:9px;background:var(--card);font-weight:700;font-size:14px;color:var(--dim)}
 .rate button.on{background:var(--accent2);color:#2a1608}
@@ -367,6 +374,8 @@ let db={parties:[],games:[],settings:{proxy:''}};
 try{const raw=localStorage.getItem(STORE);if(raw)db=JSON.parse(raw);}catch(e){}
 db.parties=db.parties||[];db.games=db.games||[];db.settings=db.settings||{};
 db.settings.proxy=db.settings.proxy||'';
+db.draw=db.draw||{drawn:[],current:null,skips:{}};
+db.draw.drawn=db.draw.drawn||[];db.draw.skips=db.draw.skips||{};
 // migration douce : anciennes parties Pixies
 db.parties.forEach(p=>{if(!p.type)p.type=(p.game==='Pixies')?'pixies':'manual';
   if(!p.rounds)p.rounds=(p.type==='pixies')?3:(p.scores[0]?p.scores[0].length:1);
@@ -400,6 +409,7 @@ let skState=null;                // vue manche-par-manche Skull King
 let ludoFilter={q:'',status:'tous'};
 let __bggResults=[],__bggMode='direct';
 let partiesQuery='';
+let statsGame='';
 
 /* ================= HELPERS ================= */
 const el=id=>document.getElementById(id);
@@ -417,10 +427,12 @@ function render(){
   if(route.view==='party')return renderParty();
   if(route.tab==='parties')return renderParties();
   if(route.tab==='ludo')return renderLudo();
+  if(route.tab==='draw')return renderDraw();
+  if(route.tab==='stats')return renderStats();
   if(route.tab==='reglages')return renderReglages();
 }
 function renderTabs(){
-  const tabs=[['parties','🎲','Parties'],['ludo','📚','Ludothèque'],['reglages','⚙︎','Réglages']];
+  const tabs=[['parties','🎲','Parties'],['ludo','📚','Ludothèque'],['draw','🎰','Tirage'],['stats','📊','Stats'],['reglages','⚙︎','Réglages']];
   el('tabbar').innerHTML=tabs.map(([k,ic,lab])=>`
     <button class="tabbtn ${route.tab===k&&!route.view?'on':''}" onclick="goTab('${k}')">
       <span class="ic">${ic}</span>${lab}</button>`).join('');
@@ -500,8 +512,10 @@ function openParty(id){route={tab:'parties',view:'party',pid:id};render();}
 function deleteParty(id){if(!confirm('Supprimer cette partie ?'))return;db.parties=db.parties.filter(p=>p.id!==id);save();goTab('parties');}
 
 /* ---- Nouvelle partie ---- */
-function newParty(){
+function newParty(preGame){
   const state={gameId:'',name:'',type:'manual',rounds:1,names:['',''],other:false};
+  if(preGame&&preGame.name){state.name=preGame.name;state.gameId=preGame.gameId||'';
+    state.type=autoType(preGame.name);if(state.type!=='manual')state.rounds=autoRounds(state.type);}
   const buildList=()=>{
     const ALIAS={'citadels':'Citadelles'};
     const canon=n=>ALIAS[(n||'').toLowerCase()]||n;
@@ -1058,6 +1072,93 @@ async function bggEnhanceThumbs(){
     __bggResults.forEach((r,i)=>{if(map[r.id]){r.thumb=map[r.id];
       const s=el('bggthumb_'+i);if(s)s.outerHTML='<img class="bggthumb" src="'+r.thumb.replace(/"/g,'&quot;')+'" alt="">';}});
   }catch(e){/* on garde les pastilles par défaut */}
+}
+
+/* ================= ONGLET TIRAGE (jeu au hasard, sans remise) ================= */
+function drawPool(){let pool=db.games.filter(g=>g.status!=='envie');if(!pool.length)pool=db.games.slice();return pool;}
+function drawGame(){
+  const pool=drawPool();if(!pool.length){renderDraw();return;}
+  let avail=pool.filter(g=>!db.draw.drawn.includes(g.id));
+  if(!avail.length){db.draw.drawn=[];avail=pool.filter(g=>g.id!==db.draw.current);if(!avail.length)avail=pool;}
+  const pick=avail[Math.floor(Math.random()*avail.length)];
+  db.draw.current=pick.id;
+  if(!db.draw.drawn.includes(pick.id))db.draw.drawn.push(pick.id);
+  save();renderDraw();
+}
+function skipGame(){
+  if(db.draw.current){db.draw.skips[db.draw.current]=(db.draw.skips[db.draw.current]||0)+1;save();}
+  drawGame();
+}
+function startFromDraw(){const g=gameById(db.draw.current);if(!g)return;newParty({name:g.name,gameId:g.id});}
+function renderDraw(){
+  const pool=drawPool();
+  // nettoie une sélection qui n'existe plus
+  if(db.draw.current&&!gameById(db.draw.current))db.draw.current=null;
+  db.draw.drawn=db.draw.drawn.filter(id=>gameById(id));
+  const cur=db.draw.current?gameById(db.draw.current):null;
+  const skipList=Object.keys(db.draw.skips).map(id=>({g:gameById(id),n:db.draw.skips[id]}))
+    .filter(x=>x.g&&x.n>0).sort((a,b)=>b.n-a.n).slice(0,10);
+  const meta=g=>{const players=(g.minP||g.maxP)?`${g.minP||'?'}–${g.maxP||'?'} j.`:'';const time=(g.minTime||g.maxTime)?`${g.minTime||g.maxTime} min`:'';return [players,time].filter(Boolean).join(' · ');};
+  el('app').innerHTML=`
+    <div class="top"><div class="iconbtn">🎰</div>
+      <div class="brand"><h1>Tirage</h1><span class="sub">Quel jeu ce soir ?</span></div></div>
+    ${!pool.length?`<div class="empty">Ajoute des jeux à ta ludothèque (possédés ou joués) pour tirer au hasard.</div>`:
+      cur?`
+        <div class="drawcard">
+          ${cur.thumb?`<img class="drawthumb" src="${esc(cur.thumb)}" alt="">`:`<div class="drawthumb ph">🎲</div>`}
+          <div class="drawname">${esc(cur.name)}</div>
+          ${meta(cur)?`<div class="drawmeta">${esc(meta(cur))}</div>`:''}
+        </div>
+        <div class="tapnote">${db.draw.drawn.length} / ${pool.length} jeux tirés ce cycle</div>
+        <button class="btn primary" onclick="startFromDraw()">▶ Lancer une partie</button>
+        <div class="two-btns">
+          <button class="btn" onclick="skipGame()">⏭ Skipper</button>
+          <button class="btn ghost" onclick="drawGame()">🎲 Retirer</button>
+        </div>`:`
+        <button class="btn primary" style="margin-top:6px" onclick="drawGame()">🎲 Tirer un jeu</button>
+        <div class="tapnote">${db.draw.drawn.length} / ${pool.length} jeux tirés ce cycle</div>`}
+    ${skipList.length?`<div class="lab" style="margin-top:22px">Jeux les plus skippés</div>
+      <div class="list">${skipList.map(x=>`<div class="tile">
+        <div class="grow"><div class="t">${esc(x.g.name)}</div></div>
+        <div class="badge">${x.n} skip${x.n>1?'s':''}</div></div>`).join('')}</div>`:''}`;
+}
+
+/* ================= ONGLET STATS (% de victoire par joueur) ================= */
+function computeStats(gameFilter){
+  const stat={};let n=0;
+  db.parties.forEach(p=>{
+    if(!partyComplete(p))return;
+    if(gameFilter&&p.game!==gameFilter)return;
+    n++;
+    const tot=partyTotals(p);const max=Math.max(...tot);
+    p.players.forEach((name,pi)=>{const key=(name||'').trim();if(!key)return;
+      const s=stat[key]||(stat[key]={name:key,played:0,won:0});
+      s.played++;if(tot[pi]===max)s.won++;});
+  });
+  const rows=Object.values(stat).map(s=>Object.assign(s,{pct:s.played?Math.round(s.won/s.played*100):0}))
+    .sort((a,b)=>b.pct-a.pct||b.won-a.won||b.played-a.played||a.name.localeCompare(b.name));
+  return {rows,n};
+}
+function __statsG(i){statsGame=(i<0)?'':(window.__statsGames[i]||'');renderStats();}
+function renderStats(){
+  const games=[...new Set(db.parties.filter(partyComplete).map(p=>p.game))].sort((a,b)=>a.localeCompare(b,'fr'));
+  window.__statsGames=games;
+  if(statsGame&&!games.includes(statsGame))statsGame='';
+  const {rows,n}=computeStats(statsGame);
+  el('app').innerHTML=`
+    <div class="top"><div class="iconbtn">📊</div>
+      <div class="brand"><h1>Stats</h1><span class="sub">${n} partie${n>1?'s':''} terminée${n>1?'s':''}${statsGame?' · '+esc(statsGame):''}</span></div></div>
+    ${games.length>1?`<div class="segrow" style="margin-bottom:12px">
+      <button class="${!statsGame?'on':''}" onclick="__statsG(-1)">Tous</button>
+      ${games.map((g,i)=>`<button class="${statsGame===g?'on':''}" onclick="__statsG(${i})">${esc(g)}</button>`).join('')}
+    </div>`:''}
+    ${rows.length?`<div class="tablewrap"><table>
+      <thead><tr><th>Joueur</th><th>Joué</th><th>Vict.</th><th>%</th></tr></thead>
+      <tbody>${rows.map((r,i)=>`<tr class="${i===0&&r.won>0?'winner':''}">
+        <td>${esc(r.name)}</td><td>${r.played}</td><td>${r.won}</td><td class="total">${r.pct}%</td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="tapnote">Victoire = plus haut score. Une égalité au sommet compte comme une victoire pour chaque joueur concerné.</div>`:
+    `<div class="empty">Aucune partie terminée${statsGame?' pour ce jeu':''}.<br>Termine des parties pour voir les statistiques.</div>`}`;
 }
 
 /* ================= ONGLET RÉGLAGES ================= */
